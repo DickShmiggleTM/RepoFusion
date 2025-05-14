@@ -3,7 +3,7 @@
 
 import { recommendRepos, type RecommendReposInput, type RecommendReposOutput } from '@/ai/flows/recommend-repos-flow';
 import type { AppSettings } from '@/types/settings';
-import { Lightbulb, ListPlus, Loader2, ServerCrash, Sparkles } from 'lucide-react';
+import { Lightbulb, ListPlus, Loader2, ServerCrash, Sparkles, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { Window } from '@/components/Window';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
   const [recommendations, setRecommendations] = useState<RecommendReposOutput['recommendations'] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isServiceUnavailable, setIsServiceUnavailable] = useState(false);
   const { toast } = useToast();
 
   const handleGetRecommendations = async (mode: 'general' | 'promptBased') => {
@@ -38,6 +39,7 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
 
     setIsLoading(true);
     setError(null);
+    setIsServiceUnavailable(false);
     setRecommendations(null);
 
     try {
@@ -53,7 +55,6 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
         geminiApiKey: appSettings.geminiApiKey,
         openrouterApiKey: appSettings.openrouterApiKey,
         huggingfaceApiKey: appSettings.huggingfaceApiKey,
-        // Pass other settings for completeness, though primary model is key here
         useCustomReasoningModel: appSettings.useCustomReasoningModel,
         reasoningApiModel: appSettings.reasoningApiModel,
         ollamaReasoningModelName: appSettings.ollamaReasoningModelName,
@@ -73,7 +74,17 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
     } catch (err) {
       const errorMessage = (err as Error).message;
       setError(errorMessage);
-      toast({ title: "Recommendation Failed", description: errorMessage, variant: "destructive" });
+      if (errorMessage.includes('503') || errorMessage.toLowerCase().includes('service unavailable') || errorMessage.toLowerCase().includes('overloaded')) {
+        setIsServiceUnavailable(true);
+        toast({ 
+          title: "AI Service Overloaded", 
+          description: "The AI model is currently busy. Please try again in a few moments.", 
+          variant: "destructive",
+          duration: 5000,
+        });
+      } else {
+        toast({ title: "Recommendation Failed", description: errorMessage, variant: "destructive" });
+      }
       console.error("Error fetching recommendations:", err);
     } finally {
       setIsLoading(false);
@@ -133,9 +144,22 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
 
         {error && !isLoading && (
           <div className="flex-grow flex flex-col items-center justify-center text-destructive p-4">
-            <ServerCrash size={32} className="mb-3" />
-            <p className="font-semibold">Error Fetching Recommendations</p>
-            <p className="text-xs text-center">{error}</p>
+            {isServiceUnavailable ? (
+              <AlertTriangle size={32} className="mb-3 text-orange-400" />
+            ) : (
+              <ServerCrash size={32} className="mb-3" />
+            )}
+            <p className="font-semibold">
+              {isServiceUnavailable ? "AI Service Temporarily Unavailable" : "Error Fetching Recommendations"}
+            </p>
+            <p className="text-xs text-center">
+              {isServiceUnavailable ? "The AI model is currently overloaded. Please try again in a few moments." : error}
+            </p>
+             {isServiceUnavailable && (
+              <Button variant="outline" onClick={() => handleGetRecommendations(promptDescription.trim() ? 'promptBased' : 'general')} className="mt-4">
+                Try Again
+              </Button>
+            )}
           </div>
         )}
 
