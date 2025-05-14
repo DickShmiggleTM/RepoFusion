@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -43,6 +44,9 @@ body {
     --chart-5: 190 40% 20%;
 
     --radius: 0.1rem; /* Blockier feel */
+    --radius-md: 0.2rem;
+    --radius-lg: 0.3rem;
+
 
     /* Sidebar specific colors - adjust if sidebar is used, maintaining the 90s theme */
     --sidebar-background: 220 10% 12%;
@@ -63,6 +67,42 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-mono;
+    @apply bg-background text-foreground font-mono antialiased;
+    min-height: 100vh; /* Ensure body takes full viewport height */
+    display: flex; /* For centering content if needed, or managing layout */
+    flex-direction: column; /* Ensure footer sticks to bottom */
+  }
+
+  /* Custom scrollbar for webkit browsers to match the retro theme */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: var(--radius-sm);
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary));
+    border-radius: var(--radius-sm);
+    border: 1px solid hsl(var(--muted));
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.8);
+  }
+  .custom-scrollbar::-webkit-scrollbar-corner {
+    background: hsl(var(--muted));
+  }
+  /* For Firefox */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
+  }
+
+}
+
+@layer utilities {
+  .content-auto {
+    content-visibility: auto;
   }
 }

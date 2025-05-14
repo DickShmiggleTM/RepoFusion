@@ -1,6 +1,7 @@
+
 "use client";
 
-import { Github, Download, Copy } from 'lucide-react';
+import { Github, Download, Copy, AlertTriangle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Window } from '@/components/Window';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Skeleton } from './ui/skeleton';
 import Image from 'next/image';
 
 interface GitHubRepo {
@@ -25,6 +27,35 @@ interface GitHubRepo {
   default_branch: string;
 }
 
+function RepoCardSkeleton() {
+  return (
+    <Card className="bg-card/50 border-primary/30">
+      <CardHeader>
+        <div className="flex items-center space-x-3">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <div>
+            <Skeleton className="h-6 w-32 mb-1" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Skeleton className="h-4 w-full mb-2" />
+        <Skeleton className="h-4 w-3/4 mb-2" />
+        <div className="flex space-x-4 mt-3">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-4 w-24" />
+        </div>
+      </CardContent>
+      <CardFooter className="flex space-x-2">
+        <Skeleton className="h-9 w-28 rounded-md" />
+        <Skeleton className="h-9 w-32 rounded-md" />
+      </CardFooter>
+    </Card>
+  );
+}
+
 export function GithubBrowserSection() {
   const [repoUrl, setRepoUrl] = useState('');
   const [repoData, setRepoData] = useState<GitHubRepo | null>(null);
@@ -32,26 +63,25 @@ export function GithubBrowserSection() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchRepoData = async () => {
-    if (!repoUrl) {
+  const fetchRepoData = async (currentUrl: string) => {
+    if (!currentUrl) {
       setError("Please enter a repository URL.");
       setRepoData(null);
       return;
     }
 
-    // Basic URL validation and parsing (e.g. https://github.com/owner/repo)
-    const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+    const match = currentUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
     if (!match) {
-      setError("Invalid GitHub repository URL format. Use format: https://github.com/owner/repo");
+      setError("Invalid GitHub repository URL. Use format: https://github.com/owner/repo");
       setRepoData(null);
       return;
     }
     const owner = match[1];
-    const repo = match[2].replace(/\.git$/, ''); // Remove .git if present
+    const repo = match[2].replace(/\.git$/, '');
 
     setIsLoading(true);
     setError(null);
-    setRepoData(null);
+    setRepoData(null); // Clear previous data for skeleton loader
 
     try {
       const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
@@ -59,7 +89,7 @@ export function GithubBrowserSection() {
         if (response.status === 404) {
           throw new Error(`Repository not found: ${owner}/${repo}`);
         } else if (response.status === 403) {
-           throw new Error(`API rate limit exceeded. Please try again later.`);
+           throw new Error(`API rate limit exceeded. Please check your connection or try again later.`);
         }
         throw new Error(`Failed to fetch repository data (Status: ${response.status})`);
       }
@@ -68,29 +98,38 @@ export function GithubBrowserSection() {
     } catch (err) {
       const errorMessage = (err as Error).message;
       setError(errorMessage);
-      toast({ title: "Error Fetching Repository", description: errorMessage, variant: "destructive" });
+      // Toast is now shown only for non-404 errors, as 404 is handled inline
+      if (!errorMessage.includes("not found") && !errorMessage.includes("rate limit")) {
+        toast({ title: "Error Fetching Repository", description: errorMessage, variant: "destructive" });
+      }
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Debounce effect for fetching repo data
   useEffect(() => {
     if (!repoUrl) {
       setRepoData(null);
       setError(null);
+      setIsLoading(false); // Ensure loading is false if URL is cleared
       return;
     }
     const handler = setTimeout(() => {
-      fetchRepoData();
-    }, 1000); // Fetch after 1s of inactivity
+      fetchRepoData(repoUrl);
+    }, 1000); 
 
     return () => {
       clearTimeout(handler);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repoUrl]);
+  }, [repoUrl]); // Only re-run when repoUrl changes
 
+  const handleLoadButtonClick = () => {
+    // Trigger fetch immediately on button click if URL is present
+    if (repoUrl) {
+      fetchRepoData(repoUrl);
+    }
+  };
 
   const handleClone = () => {
     if (repoData) {
@@ -120,17 +159,19 @@ export function GithubBrowserSection() {
               onChange={(e) => setRepoUrl(e.target.value)}
               placeholder="e.g., https://github.com/vercel/next.js"
               className="bg-input border-primary/50 focus:border-primary"
+              aria-describedby="repo-error"
+              aria-invalid={!!error}
             />
-            <Button onClick={fetchRepoData} disabled={isLoading || !repoUrl} className="bg-primary text-primary-foreground hover:bg-primary/80">
+            <Button onClick={handleLoadButtonClick} disabled={isLoading || !repoUrl} className="bg-primary text-primary-foreground hover:bg-primary/80">
               {isLoading ? "Loading..." : "Load Repo"}
             </Button>
           </div>
-          {error && <p className="text-destructive text-xs mt-1">{error}</p>}
+          {error && <p id="repo-error" className="text-destructive text-xs mt-1 flex items-center"><AlertTriangle size={14} className="mr-1 inline-block" /> {error}</p>}
         </div>
 
-        {isLoading && <p className="text-center text-primary">Fetching repository data...</p>}
+        {isLoading && <RepoCardSkeleton />}
 
-        {repoData && (
+        {!isLoading && repoData && (
           <Card className="bg-card/50 border-primary/30">
             <CardHeader>
               <div className="flex items-center space-x-3">
@@ -153,11 +194,11 @@ export function GithubBrowserSection() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm mb-2">{repoData.description || "No description provided."}</p>
-              <div className="text-xs text-muted-foreground space-x-4">
-                <span>⭐ {repoData.stargazers_count}</span>
-                <span>️🍴 {repoData.forks_count}</span>
-                <span>⚠️ {repoData.open_issues_count} open issues</span>
+              <p className="text-sm mb-3">{repoData.description || "No description provided."}</p>
+              <div className="text-xs text-muted-foreground flex items-center space-x-4 flex-wrap gap-y-1">
+                <span>⭐ {repoData.stargazers_count.toLocaleString()}</span>
+                <span>🍴 {repoData.forks_count.toLocaleString()}</span>
+                <span>⚠️ {repoData.open_issues_count.toLocaleString()} open issues</span>
               </div>
             </CardContent>
             <CardFooter className="flex space-x-2">
@@ -169,6 +210,13 @@ export function GithubBrowserSection() {
               </Button>
             </CardFooter>
           </Card>
+        )}
+        
+        {!isLoading && !repoData && !error && !repoUrl && (
+           <div className="text-center text-muted-foreground pt-8">
+            <Github size={32} className="mx-auto mb-2 opacity-50" />
+            <p>Enter a GitHub repository URL above to view its details.</p>
+          </div>
         )}
       </div>
     </Window>
