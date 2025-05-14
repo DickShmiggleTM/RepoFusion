@@ -12,7 +12,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const ApiModelSchema = z.enum(['gemini', 'openrouter', 'huggingface', 'llamafile']).optional();
+const ApiModelSchema = z.enum(['gemini', 'openrouter', 'huggingface', 'llamafile', 'ollama']).optional();
 
 const IntelligentMergeInputSchema = z.object({
   repositoryUrls: z
@@ -27,11 +27,14 @@ const IntelligentMergeInputSchema = z.object({
     .optional()
     .describe('Additional instructions for the merging process, such as specific features to prioritize or conflicts to resolve in a certain way.'),
   mainApiModel: ApiModelSchema.describe('The main API model to use for generation.'),
+  ollamaMainModelName: z.string().optional().describe('The name of the Ollama model to use for main generation, if mainApiModel is "ollama".'),
   useCustomReasoningModel: z.boolean().optional().describe('Whether to use a custom reasoning model.'),
   reasoningApiModel: ApiModelSchema.describe('The API model to use for reasoning tasks, if useCustomReasoningModel is true.'),
+  ollamaReasoningModelName: z.string().optional().describe('The name of the Ollama model to use for reasoning, if reasoningApiModel is "ollama".'),
   useCustomCodingModel: z.boolean().optional().describe('Whether to use a custom coding model.'),
   codingApiModel: ApiModelSchema.describe('The API model to use for coding tasks, if useCustomCodingModel is true.'),
-  llamafilePath: z.string().optional().describe('Path or URL to the Llamafile, if selected.'),
+  ollamaCodingModelName: z.string().optional().describe('The name of the Ollama model to use for coding, if codingApiModel is "ollama".'),
+  llamafilePath: z.string().optional().describe('Path or URL to the Llamafile, if selected for any model type.'),
 });
 export type IntelligentMergeInput = z.infer<typeof IntelligentMergeInputSchema>;
 
@@ -62,10 +65,21 @@ Repositories:
 {{/each}}
 
 Target Language: {{{targetLanguage}}}
-Main Model: {{{mainApiModel}}}
-{{#if useCustomReasoningModel}}Reasoning Model: {{{reasoningApiModel}}}{{/if}}
-{{#if useCustomCodingModel}}Coding Model: {{{codingApiModel}}}{{/if}}
-{{#if llamafilePath}}Llamafile Path: {{{llamafilePath}}}{{/if}}
+
+Main API Model: {{{mainApiModel}}}
+{{#if ollamaMainModelName}}Ollama Main Model Name: {{{ollamaMainModelName}}}{{/if}}
+
+{{#if useCustomReasoningModel}}
+Reasoning API Model: {{{reasoningApiModel}}}
+{{#if ollamaReasoningModelName}}Ollama Reasoning Model Name: {{{ollamaReasoningModelName}}}{{/if}}
+{{/if}}
+
+{{#if useCustomCodingModel}}
+Coding API Model: {{{codingApiModel}}}
+{{#if ollamaCodingModelName}}Ollama Coding Model Name: {{{ollamaCodingModelName}}}{{/if}}
+{{/if}}
+
+{{#if llamafilePath}}Llamafile Path (if Llamafile selected for any model): {{{llamafilePath}}}{{/if}}
 
 Instructions: {{{instructions}}}
 
@@ -84,9 +98,9 @@ const intelligentMergeFlow = ai.defineFlow(
   },
   async input => {
     // For now, the flow uses the globally configured model in genkit.ts.
-    // Future work: Dynamically select model/plugins based on input.mainApiModel, etc.
+    // Future work: Dynamically select model/plugins based on input settings.
     // This includes handling 'llamafile' by potentially invoking a local Llamafile executable
-    // via a custom Genkit tool or action, which is not implemented here.
+    // or 'ollama' by making requests to a local Ollama server via a custom Genkit tool/action.
     const {output} = await prompt(input);
     return output!;
   }

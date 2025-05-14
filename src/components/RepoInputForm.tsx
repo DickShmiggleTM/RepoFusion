@@ -73,11 +73,14 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
       const fullInput: IntelligentMergeInput = {
         ...data,
         mainApiModel: appSettings.mainApiModel,
+        ollamaMainModelName: appSettings.mainApiModel === 'ollama' ? appSettings.ollamaMainModelName : undefined,
         useCustomReasoningModel: appSettings.useCustomReasoningModel,
         reasoningApiModel: appSettings.reasoningApiModel,
+        ollamaReasoningModelName: appSettings.useCustomReasoningModel && appSettings.reasoningApiModel === 'ollama' ? appSettings.ollamaReasoningModelName : undefined,
         useCustomCodingModel: appSettings.useCustomCodingModel,
         codingApiModel: appSettings.codingApiModel,
-        llamafilePath: appSettings.llamafilePath, // Pass Llamafile path
+        ollamaCodingModelName: appSettings.useCustomCodingModel && appSettings.codingApiModel === 'ollama' ? appSettings.ollamaCodingModelName : undefined,
+        llamafilePath: appSettings.llamafilePath,
       };
       
       const result = await intelligentMerge(fullInput);
@@ -106,7 +109,7 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
     <Window title="RepoFusion AI Merge Control" icon={<Terminal size={18} />} className="min-h-[400px]">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 h-full flex flex-col">
         <fieldset disabled={isLoading} className="flex-grow contents">
-          <ScrollArea className="flex-grow pr-3">
+          <ScrollArea className="flex-grow pr-3 custom-scrollbar">
             <div className="space-y-3">
               <div>
                 <Label htmlFor="repositoryUrls" className="text-primary">Repository URLs (2 to {MAX_REPOS})</Label>
