@@ -36,7 +36,7 @@ export default function RepoFusionPageContent() {
       <header className="text-center space-y-2 relative pt-4 md:pt-0 animate-fade-in">
         <div className="inline-flex items-center justify-center">
           <Zap size={48} className="text-primary animate-pulse" />
-          <h1 className="text-4xl md:text-5xl font-bold text-primary ml-3">
+          <h1 className="text-4xl md:text-5xl font-bold text-primary ml-3 title-glow">
             RepoFusion
           </h1>
         </div>

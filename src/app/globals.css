@@ -43,7 +43,7 @@ body {
     --chart-4: 170 50% 30%;
     --chart-5: 190 40% 20%;
 
-    --radius-sm: 0.2rem; /* Adjusted for more distinct blocky feel */
+    --radius-sm: 0.2rem; 
     --radius-md: 0.4rem;
     --radius-lg: 0.6rem;
 
@@ -105,8 +105,22 @@ body {
   }
 }
 
+@layer components {
+  .title-glow {
+    animation: title-glow-animation 2.5s infinite alternate;
+    text-shadow: 
+      0 0 5px hsl(var(--primary) / 0.7),
+      0 0 10px hsl(var(--primary) / 0.5),
+      0 0 15px hsl(var(--primary) / 0.3);
+  }
+}
+
+
 @layer utilities {
   .content-auto {
     content-visibility: auto;
+  }
+  .animation-delay-\[100ms\] {
+    animation-delay: 100ms;
   }
 }

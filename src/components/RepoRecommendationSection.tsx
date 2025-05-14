@@ -136,28 +136,29 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
         </div>
 
         {isLoading && (
-          <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground animate-pulse p-4">
-            <Loader2 size={32} className="animate-spin mb-3 text-primary" />
-            <p>AI is thinking... fetching recommendations...</p>
+          <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground p-4">
+            <Loader2 size={36} className="animate-spin mb-4 text-primary" />
+            <p className="text-sm font-semibold">AI is conjuring recommendations...</p>
+            <p className="text-xs">This might take a moment.</p>
           </div>
         )}
 
         {error && !isLoading && (
-          <div className="flex-grow flex flex-col items-center justify-center text-destructive p-4">
+          <div className="flex-grow flex flex-col items-center justify-center text-destructive p-4 animate-fade-in">
             {isServiceUnavailable ? (
-              <AlertTriangle size={32} className="mb-3 text-orange-400" />
+              <AlertTriangle size={36} className="mb-3 text-orange-400" />
             ) : (
-              <ServerCrash size={32} className="mb-3" />
+              <ServerCrash size={36} className="mb-3" />
             )}
-            <p className="font-semibold">
+            <p className="font-semibold text-lg mb-1">
               {isServiceUnavailable ? "AI Service Temporarily Unavailable" : "Error Fetching Recommendations"}
             </p>
-            <p className="text-xs text-center">
+            <p className="text-xs text-center mb-3 max-w-md">
               {isServiceUnavailable ? "The AI model is currently overloaded. Please try again in a few moments." : error}
             </p>
              {isServiceUnavailable && (
               <Button variant="outline" onClick={() => handleGetRecommendations(promptDescription.trim() ? 'promptBased' : 'general')} className="mt-4">
-                Try Again
+                <RotateCw size={16} className="mr-2"/> Try Again
               </Button>
             )}
           </div>
@@ -165,12 +166,12 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
 
         {!isLoading && !error && recommendations && (
           <>
-            <Separator className="my-3"/>
+            <Separator className="my-3 bg-border/50"/>
             <h3 className="text-md font-semibold text-primary mb-2 px-1">Recommended Repositories:</h3>
             <ScrollArea className="flex-grow pr-2 custom-scrollbar">
               <div className="space-y-3">
                 {recommendations.map((rec, index) => (
-                  <Card key={index} className="bg-card/60 border-primary/30 animate-fade-in-up" style={{animationDelay: `${index * 100}ms`}}>
+                  <Card key={index} className="bg-card/70 border-primary/30 animate-fade-in-up hover:border-primary/60 hover:shadow-md transition-all" style={{animationDelay: `${index * 100}ms`}}>
                     <CardHeader className="p-3">
                       <CardTitle className="text-sm text-primary hover:underline">
                         <a href={rec.url} target="_blank" rel="noopener noreferrer">{rec.name}</a>
@@ -196,10 +197,12 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
           </>
         )}
          {!isLoading && !error && !recommendations && (
-          <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
-            <Lightbulb size={32} className="mb-3 opacity-50" />
-            <p>Get AI-powered repository recommendations.</p>
-            <p className="text-xs">Use general mode or provide a prompt above.</p>
+          <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground p-6 text-center animate-fade-in">
+            <Lightbulb size={36} className="mb-4 opacity-60 text-primary/70 animate-pulse" />
+            <p className="text-lg font-semibold text-primary mb-1">Discover Repositories</p>
+            <p className="text-xs max-w-xs">
+              Get AI-powered suggestions. Use general mode or provide a prompt above to find relevant GitHub projects.
+            </p>
           </div>
         )}
       </div>

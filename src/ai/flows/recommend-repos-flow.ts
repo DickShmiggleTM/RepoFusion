@@ -44,13 +44,13 @@ const RecommendReposInputSchema = z.object({
 export type RecommendReposInput = z.infer<typeof RecommendReposInputSchema>;
 
 const RecommendedRepoSchema = z.object({
-  name: z.string().describe('The name of the GitHub repository.'),
-  url: z.string().describe('The full URL of the GitHub repository.'), // No .url() refinement here
-  reason: z.string().describe('A brief explanation why this repository is recommended.'),
+  name: z.string().describe('The name of the GitHub repository (e.g., "Next.js").'),
+  url: z.string().describe('The full HTTPS URL of the GitHub repository (e.g., "https://github.com/vercel/next.js").'), // No .url() refinement here for API schema compatibility
+  reason: z.string().describe('A brief (1-2 sentence) explanation of why this repository is recommended based on the request.'),
 });
 
 const RecommendReposOutputSchema = z.object({
-  recommendations: z.array(RecommendedRepoSchema).length(5).describe('A list of 5 recommended GitHub repositories.'),
+  recommendations: z.array(RecommendedRepoSchema).length(5).describe('A list of exactly 5 recommended GitHub repositories, each with a name, full GitHub URL, and a reason.'),
 });
 export type RecommendReposOutput = z.infer<typeof RecommendReposOutputSchema>;
 
@@ -58,7 +58,7 @@ const defineRecommendReposPrompt = (aiInstance: typeof globalAi) => aiInstance.d
   name: 'recommendReposPrompt',
   input: {schema: RecommendReposInputSchema},
   output: {schema: RecommendReposOutputSchema},
-  prompt: `You are an AI assistant specialized in recommending GitHub repositories. Your goal is to suggest 5 repositories.
+  prompt: `You are an AI assistant specialized in recommending GitHub repositories. Your goal is to suggest exactly 5 repositories.
 
 Current Model Configuration (for your context, this is the main model you are currently using):
 - Main Model Type: {{{mainApiModel}}}
@@ -73,12 +73,16 @@ Recommendation Mode: {{{mode}}}
 {{#if promptDescription}}
 User's Project Description/Goal:
 "{{{promptDescription}}}"
-Based on this description, please recommend 5 GitHub repositories that would be relevant, potentially compatible for merging, or offer diverse functionalities related to the prompt. For each repository, provide its name, full URL, and a brief reason for your recommendation.
+Based on this description, please recommend 5 GitHub repositories that would be relevant, potentially compatible for merging, or offer diverse functionalities related to the prompt. For each repository, provide its name, full HTTPS GitHub URL, and a brief reason for your recommendation. Ensure the URLs are valid and point to actual GitHub repositories.
 {{else}}
-Please provide a general recommendation of 5 GitHub repositories. These repositories should be chosen for their potential compatibility for merging together to create an interesting or useful application, and for their variation in functionality. For example, one could be a UI library, another a backend framework, another a data visualization tool, etc. For each repository, provide its name, full URL, and a brief reason for your recommendation.
+Please provide a general recommendation of 5 GitHub repositories. These repositories should be chosen for their potential compatibility for merging together to create an interesting or useful application, and for their variation in functionality. For example, one could be a UI library, another a backend framework, another a data visualization tool, etc. For each repository, provide its name, full HTTPS GitHub URL, and a brief reason for your recommendation. Ensure the URLs are valid and point to actual GitHub repositories.
 {{/if}}
 
-Ensure you provide exactly 5 recommendations, each with a name, a valid GitHub URL, and a reason.
+Ensure you provide exactly 5 recommendations. Each recommendation MUST include:
+1.  'name': The repository name.
+2.  'url': The full HTTPS GitHub URL.
+3.  'reason': A concise reason for the recommendation.
+Adhere strictly to the JSON output schema.
 `,
 });
 
@@ -93,19 +97,26 @@ const recommendReposFlow = globalAi.defineFlow(
     let currentAi = globalAi;
     let configuredPrompt = defineRecommendReposPrompt(currentAi);
     let modelToUse: ModelArgument | undefined = undefined;
+    let baseModelName: string | undefined = undefined;
+
 
     if (input.mainApiModel === 'gemini' && input.geminiApiKey && input.geminiMainModelName) {
       console.log(`RecommendRepos: Using user-provided Gemini API key for model: ${input.geminiMainModelName}`);
-      const geminiPluginWithKey = googleAI({ apiKey: input.geminiApiKey });
-      currentAi = genkit({ plugins: [geminiPluginWithKey], logLevel: 'warn', flowId: 'recommendReposFlow-gemini-customKey' });
-      configuredPrompt = defineRecommendReposPrompt(currentAi);
-      modelToUse = `googleai/${input.geminiMainModelName}`;
+      try {
+        const geminiPluginWithKey = googleAI({ apiKey: input.geminiApiKey });
+        currentAi = genkit({ plugins: [geminiPluginWithKey], logLevel: 'warn', flowId: 'recommendReposFlow-gemini-customKey' });
+        configuredPrompt = defineRecommendReposPrompt(currentAi);
+        modelToUse = `googleai/${input.geminiMainModelName}`;
+      } catch (e) {
+        console.error("RecommendRepos: Failed to initialize temporary Genkit instance with user's Gemini key.", e);
+        modelToUse = `googleai/${input.geminiMainModelName}`;
+      }
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'ollama' && input.ollamaMainModelName) {
-      const baseOllamaModelName = input.ollamaMainModelName.split(':')[0];
-      modelToUse = `ollama/${baseOllamaModelName}`;
-      console.warn(`RecommendRepos: Ollama model selected: ${input.ollamaMainModelName}. Using base name for Genkit: ${baseOllamaModelName}. Ensure Genkit is configured with an Ollama plugin.`);
+      baseModelName = input.ollamaMainModelName.split(':')[0];
+      modelToUse = `ollama/${baseModelName}`;
+      console.warn(`RecommendRepos: Ollama model selected: ${input.ollamaMainModelName}. Using base name for Genkit: ${baseModelName}. Ensure Genkit is configured with an Ollama plugin.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
       console.warn("RecommendRepos: OpenRouter model selected. Ensure Genkit is configured with an OpenRouter plugin.");
@@ -118,15 +129,29 @@ const recommendReposFlow = globalAi.defineFlow(
     
     const {output} = await configuredPrompt(input, modelToUse ? { model: modelToUse } : undefined);
     
-    if (!output || !output.recommendations || output.recommendations.length !== 5) {
-      throw new Error('AI did not return 5 valid recommendations.');
+    if (!output || !output.recommendations) {
+      throw new Error('AI did not return recommendations structure. Please try again.');
     }
+    if (output.recommendations.length !== 5) {
+      throw new Error(`AI did not return exactly 5 recommendations. Received ${output.recommendations.length}.`);
+    }
+
     for (const repo of output.recommendations) {
-        if (typeof repo.name !== 'string' || typeof repo.url !== 'string' || typeof repo.reason !== 'string') {
-            throw new Error('Invalid repository object structure in AI output. Each repo must have name, url, and reason as strings.');
+        if (typeof repo.name !== 'string' || !repo.name.trim()) {
+            throw new Error('Invalid repository object structure in AI output: "name" must be a non-empty string.');
+        }
+        if (typeof repo.url !== 'string' || !repo.url.trim()) {
+            throw new Error(`Invalid repository object structure for "${repo.name}": "url" must be a non-empty string.`);
         }
         if (!repo.url.startsWith('http://') && !repo.url.startsWith('https://')) {
-            throw new Error(`Invalid URL format for repository "${repo.name}": ${repo.url}`);
+            throw new Error(`Invalid URL format for repository "${repo.name}": ${repo.url}. Must be HTTP or HTTPS.`);
+        }
+         // Basic check for GitHub URL structure
+        if (!/github\.com\/[^/]+\/[^/]+/.test(repo.url)) {
+            throw new Error(`URL for "${repo.name}" (${repo.url}) does not appear to be a valid GitHub repository URL.`);
+        }
+        if (typeof repo.reason !== 'string' || !repo.reason.trim()) {
+            throw new Error(`Invalid repository object structure for "${repo.name}": "reason" must be a non-empty string.`);
         }
     }
     return output;
@@ -136,4 +161,3 @@ const recommendReposFlow = globalAi.defineFlow(
 export async function recommendRepos(input: RecommendReposInput): Promise<RecommendReposOutput> {
   return recommendReposFlow(input);
 }
-

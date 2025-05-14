@@ -30,28 +30,28 @@ interface GitHubRepo {
 
 function RepoCardSkeleton() {
   return (
-    <Card className="bg-card/50 border-primary/30">
+    <Card className="bg-card/50 border-primary/30 animate-fade-in">
       <CardHeader>
         <div className="flex items-center space-x-3">
-          <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-10 w-10 rounded-full bg-primary/30" />
           <div>
-            <Skeleton className="h-6 w-32 mb-1" />
-            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-6 w-32 mb-1 bg-primary/30" />
+            <Skeleton className="h-4 w-48 bg-muted/50" />
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <Skeleton className="h-4 w-full mb-2" />
-        <Skeleton className="h-4 w-3/4 mb-2" />
+        <Skeleton className="h-4 w-full mb-2 bg-muted/50" />
+        <Skeleton className="h-4 w-3/4 mb-2 bg-muted/50" />
         <div className="flex space-x-4 mt-3">
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-4 w-16 bg-muted/50" />
+          <Skeleton className="h-4 w-16 bg-muted/50" />
+          <Skeleton className="h-4 w-24 bg-muted/50" />
         </div>
       </CardContent>
       <CardFooter className="flex space-x-2">
-        <Skeleton className="h-9 w-28 rounded-md" />
-        <Skeleton className="h-9 w-32 rounded-md" />
+        <Skeleton className="h-9 w-28 rounded-md bg-primary/30" />
+        <Skeleton className="h-9 w-32 rounded-md bg-primary/30" />
       </CardFooter>
     </Card>
   );
@@ -173,7 +173,7 @@ export function GithubBrowserSection() {
         {!isLoading && repoData && (
           <Card className={cn(
             "bg-card/50 border-primary/30 animate-fade-in-up",
-            "hover:border-primary/70 hover:shadow-md transition-all duration-200"
+            "hover:border-primary/70 hover:shadow-lg transition-all duration-200" // Enhanced hover
             )}>
             <CardHeader>
               <div className="flex items-center space-x-3">
@@ -182,7 +182,7 @@ export function GithubBrowserSection() {
                   alt={`${repoData.owner.login} avatar`} 
                   width={40} 
                   height={40} 
-                  className="rounded-full border border-primary"
+                  className="rounded-full border-2 border-primary" // Thicker border
                   data-ai-hint="avatar profile"
                 />
                 <div>
@@ -215,10 +215,12 @@ export function GithubBrowserSection() {
         )}
         
         {!isLoading && !repoData && !error && !repoUrl && (
-           <div className="text-center text-muted-foreground pt-8 animate-fade-in flex flex-col items-center justify-center h-full">
-            <Github size={40} className="mx-auto mb-4 opacity-50 text-primary/70" />
-            <p className="text-md font-semibold">Browse GitHub Repositories</p>
-            <p className="text-xs">Enter a URL above to fetch and display repository details instantly.</p>
+           <div className="text-center text-muted-foreground flex flex-col items-center justify-center h-full p-6 animate-fade-in">
+            <Github size={48} className="mx-auto mb-4 opacity-60 text-primary/80 animate-pulse" />
+            <p className="text-lg font-semibold text-primary mb-1">Explore GitHub</p>
+            <p className="text-xs max-w-xs">
+              Enter a repository URL above to fetch and display its details instantly.
+            </p>
           </div>
         )}
       </div>

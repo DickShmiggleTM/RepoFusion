@@ -19,7 +19,7 @@ export function Window({ title, children, className, icon }: WindowProps) {
         "border-2 border-foreground/50 shadow-lg flex flex-col bg-card text-card-foreground rounded-sm overflow-hidden transition-all duration-300 ease-out hover:shadow-xl", 
         className
       )}>
-      <CardHeader className="bg-secondary/40 p-2 flex flex-row items-center justify-between border-b-2 border-foreground/50 cursor-default select-none">
+      <CardHeader className="bg-gradient-to-b from-secondary/60 to-secondary/40 p-2 flex flex-row items-center justify-between border-b-2 border-foreground/50 cursor-default select-none">
         <div className="flex items-center gap-2 truncate">
           {icon && <span className="text-primary flex-shrink-0">{icon}</span>}
           <CardTitle className="text-sm font-semibold text-primary truncate">{title}</CardTitle>
