@@ -44,7 +44,7 @@ export type RecommendReposInput = z.infer<typeof RecommendReposInputSchema>;
 
 const RecommendedRepoSchema = z.object({
   name: z.string().describe('The name of the GitHub repository.'),
-  url: z.string().url().describe('The full URL of the GitHub repository.'),
+  url: z.string().describe('The full URL of the GitHub repository.'), // Removed .url()
   reason: z.string().describe('A brief explanation why this repository is recommended.'),
 });
 
@@ -103,3 +103,4 @@ const recommendReposFlow = ai.defineFlow(
     return output;
   }
 );
+
