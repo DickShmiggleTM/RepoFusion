@@ -215,9 +215,10 @@ export function GithubBrowserSection() {
         )}
         
         {!isLoading && !repoData && !error && !repoUrl && (
-           <div className="text-center text-muted-foreground pt-8 animate-fade-in">
-            <Github size={32} className="mx-auto mb-2 opacity-50" />
-            <p>Enter a GitHub repository URL above to view its details.</p>
+           <div className="text-center text-muted-foreground pt-8 animate-fade-in flex flex-col items-center justify-center h-full">
+            <Github size={40} className="mx-auto mb-4 opacity-50 text-primary/70" />
+            <p className="text-md font-semibold">Browse GitHub Repositories</p>
+            <p className="text-xs">Enter a URL above to fetch and display repository details instantly.</p>
           </div>
         )}
       </div>
