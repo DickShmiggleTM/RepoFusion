@@ -27,4 +27,6 @@ export const defaultAppSettings: AppSettings = {
   ollamaCodingModelName: 'codellama', // Default Ollama model suggestion for coding
   llamafilePath: '',
   geminiApiKey: '',
-  
+  openrouterApiKey: '',
+  huggingfaceApiKey: '',
+};
