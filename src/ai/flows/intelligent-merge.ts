@@ -12,8 +12,9 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-const ApiModelSchema = z.enum(['gemini', 'openrouter', 'huggingface', 'llamafile', 'ollama']).optional();
+const ApiModelTypeSchema = z.enum(['gemini', 'openrouter', 'huggingface', 'llamafile', 'ollama']).optional();
 
+// Removed 'export' from the line below
 const IntelligentMergeInputSchema = z.object({
   repositoryUrls: z
     .array(z.string().url())
@@ -26,15 +27,28 @@ const IntelligentMergeInputSchema = z.object({
     .string()
     .optional()
     .describe('Additional instructions for the merging process, such as specific features to prioritize or conflicts to resolve in a certain way.'),
-  mainApiModel: ApiModelSchema.describe('The main API model to use for generation.'),
-  ollamaMainModelName: z.string().optional().describe('The name of the Ollama model to use for main generation, if mainApiModel is "ollama".'),
+  
+  mainApiModel: ApiModelTypeSchema.describe('The main API model type to use for generation.'),
+  ollamaMainModelName: z.string().optional().describe('The name of the Ollama model for main generation.'),
+  geminiMainModelName: z.string().optional().describe('The name of the Gemini model for main generation.'),
+  openrouterMainModelName: z.string().optional().describe('The ID of the OpenRouter model for main generation.'),
+  huggingfaceMainModelName: z.string().optional().describe('The ID of the HuggingFace model for main generation.'),
+
   useCustomReasoningModel: z.boolean().optional().describe('Whether to use a custom reasoning model.'),
-  reasoningApiModel: ApiModelSchema.describe('The API model to use for reasoning tasks, if useCustomReasoningModel is true.'),
-  ollamaReasoningModelName: z.string().optional().describe('The name of the Ollama model to use for reasoning, if reasoningApiModel is "ollama".'),
+  reasoningApiModel: ApiModelTypeSchema.describe('The API model type for reasoning tasks.'),
+  ollamaReasoningModelName: z.string().optional().describe('The name of the Ollama model for reasoning.'),
+  geminiReasoningModelName: z.string().optional().describe('The name of the Gemini model for reasoning.'),
+  openrouterReasoningModelName: z.string().optional().describe('The ID of the OpenRouter model for reasoning.'),
+  huggingfaceReasoningModelName: z.string().optional().describe('The ID of the HuggingFace model for reasoning.'),
+
   useCustomCodingModel: z.boolean().optional().describe('Whether to use a custom coding model.'),
-  codingApiModel: ApiModelSchema.describe('The API model to use for coding tasks, if useCustomCodingModel is true.'),
-  ollamaCodingModelName: z.string().optional().describe('The name of the Ollama model to use for coding, if codingApiModel is "ollama".'),
-  llamafilePath: z.string().optional().describe('Path or URL to the Llamafile, if selected for any model type.'),
+  codingApiModel: ApiModelTypeSchema.describe('The API model type for coding tasks.'),
+  ollamaCodingModelName: z.string().optional().describe('The name of the Ollama model for coding.'),
+  geminiCodingModelName: z.string().optional().describe('The name of the Gemini model for coding.'),
+  openrouterCodingModelName: z.string().optional().describe('The ID of the OpenRouter model for coding.'),
+  huggingfaceCodingModelName: z.string().optional().describe('The ID of the HuggingFace model for coding.'),
+  
+  llamafilePath: z.string().optional().describe('Path or URL to the Llamafile, if selected.'),
   geminiApiKey: z.string().optional().describe('API Key for Gemini (Google AI).'),
   openrouterApiKey: z.string().optional().describe('API Key for OpenRouter.'),
   huggingfaceApiKey: z.string().optional().describe('API Key for HuggingFace.'),
@@ -69,30 +83,46 @@ Repositories:
 
 Target Language: {{#if targetLanguage}}{{{targetLanguage}}}{{else}}Not specified{{/if}}
 
-Main API Model: {{{mainApiModel}}}
-{{#if ollamaMainModelName}}Ollama Main Model Name: {{{ollamaMainModelName}}}{{/if}}
+Main Generation Model Configuration:
+- Type: {{{mainApiModel}}}
+{{#if ollamaMainModelName}}  - Ollama Model: {{{ollamaMainModelName}}}{{/if}}
+{{#if geminiMainModelName}}  - Gemini Model: {{{geminiMainModelName}}}{{/if}}
+{{#if openrouterMainModelName}}  - OpenRouter Model: {{{openrouterMainModelName}}}{{/if}}
+{{#if huggingfaceMainModelName}}  - HuggingFace Model: {{{huggingfaceMainModelName}}}{{/if}}
 
 {{#if useCustomReasoningModel}}
-Reasoning API Model: {{{reasoningApiModel}}}
-{{#if ollamaReasoningModelName}}Ollama Reasoning Model Name: {{{ollamaReasoningModelName}}}{{/if}}
+Reasoning Model Configuration:
+- Type: {{{reasoningApiModel}}}
+{{#if ollamaReasoningModelName}}  - Ollama Model: {{{ollamaReasoningModelName}}}{{/if}}
+{{#if geminiReasoningModelName}}  - Gemini Model: {{{geminiReasoningModelName}}}{{/if}}
+{{#if openrouterReasoningModelName}}  - OpenRouter Model: {{{openrouterReasoningModelName}}}{{/if}}
+{{#if huggingfaceReasoningModelName}}  - HuggingFace Model: {{{huggingfaceReasoningModelName}}}{{/if}}
+{{else}}
+Reasoning Model: Using Main Generation Model.
 {{/if}}
 
 {{#if useCustomCodingModel}}
-Coding API Model: {{{codingApiModel}}}
-{{#if ollamaCodingModelName}}Ollama Coding Model Name: {{{ollamaCodingModelName}}}{{/if}}
+Coding Model Configuration:
+- Type: {{{codingApiModel}}}
+{{#if ollamaCodingModelName}}  - Ollama Model: {{{ollamaCodingModelName}}}{{/if}}
+{{#if geminiCodingModelName}}  - Gemini Model: {{{geminiCodingModelName}}}{{/if}}
+{{#if openrouterCodingModelName}}  - OpenRouter Model: {{{openrouterCodingModelName}}}{{/if}}
+{{#if huggingfaceCodingModelName}}  - HuggingFace Model: {{{huggingfaceCodingModelName}}}{{/if}}
+{{else}}
+Coding Model: Using Main Generation Model.
 {{/if}}
 
 {{#if llamafilePath}}Llamafile Path (if Llamafile selected for any model): {{{llamafilePath}}}{{/if}}
 
-{{#if geminiApiKey}}Gemini API Key: [Provided]{{else}}Gemini API Key: [Not Provided]{{/if}}
-{{#if openrouterApiKey}}OpenRouter API Key: [Provided]{{else}}OpenRouter API Key: [Not Provided]{{/if}}
-{{#if huggingfaceApiKey}}HuggingFace API Key: [Provided]{{else}}HuggingFace API Key: [Not Provided]{{/if}}
+API Keys Provided:
+- Gemini: {{#if geminiApiKey}}Yes{{else}}No{{/if}}
+- OpenRouter: {{#if openrouterApiKey}}Yes{{else}}No{{/if}}
+- HuggingFace: {{#if huggingfaceApiKey}}Yes{{else}}No{{/if}}
 
 Instructions: {{#if instructions}}{{{instructions}}}{{else}}No additional instructions provided.{{/if}}
 
 Provide the complete, working, and fully functional merged codebase, as well as a summary of the merging process, including conflict resolution and integration strategies.
-
-Make sure all external dependancies are resolved correctly, and the merged codebase is fully functional.
+Ensure all external dependencies are resolved correctly, and the merged codebase is fully functional.
 
 Merged Codebase:`,
 });
@@ -105,10 +135,13 @@ const intelligentMergeFlow = ai.defineFlow(
   },
   async input => {
     // For now, the flow uses the globally configured model in genkit.ts.
-    // Future work: Dynamically select model/plugins based on input settings, including API keys.
+    // Future work: Dynamically select model/plugins based on input settings, including API keys
+    // and specific model names for Gemini, OpenRouter, HuggingFace, Ollama, Llamafile.
     // This includes handling 'llamafile' by potentially invoking a local Llamafile executable
     // or 'ollama' by making requests to a local Ollama server via a custom Genkit tool/action.
+    // API keys and model IDs (e.g., input.geminiMainModelName) are available here for such logic.
     const {output} = await prompt(input);
     return output!;
   }
 );
+

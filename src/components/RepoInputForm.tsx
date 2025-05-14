@@ -72,15 +72,34 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
       
       const fullInput: IntelligentMergeInput = {
         ...data,
+        // Main Model
         mainApiModel: appSettings.mainApiModel,
         ollamaMainModelName: appSettings.mainApiModel === 'ollama' ? appSettings.ollamaMainModelName : undefined,
+        geminiMainModelName: appSettings.mainApiModel === 'gemini' ? appSettings.geminiMainModelName : undefined,
+        openrouterMainModelName: appSettings.mainApiModel === 'openrouter' ? appSettings.openrouterMainModelName : undefined,
+        huggingfaceMainModelName: appSettings.mainApiModel === 'huggingface' ? appSettings.huggingfaceMainModelName : undefined,
+
+        // Reasoning Model
         useCustomReasoningModel: appSettings.useCustomReasoningModel,
-        reasoningApiModel: appSettings.reasoningApiModel,
+        reasoningApiModel: appSettings.useCustomReasoningModel ? appSettings.reasoningApiModel : undefined,
         ollamaReasoningModelName: appSettings.useCustomReasoningModel && appSettings.reasoningApiModel === 'ollama' ? appSettings.ollamaReasoningModelName : undefined,
+        geminiReasoningModelName: appSettings.useCustomReasoningModel && appSettings.reasoningApiModel === 'gemini' ? appSettings.geminiReasoningModelName : undefined,
+        openrouterReasoningModelName: appSettings.useCustomReasoningModel && appSettings.reasoningApiModel === 'openrouter' ? appSettings.openrouterReasoningModelName : undefined,
+        huggingfaceReasoningModelName: appSettings.useCustomReasoningModel && appSettings.reasoningApiModel === 'huggingface' ? appSettings.huggingfaceReasoningModelName : undefined,
+
+        // Coding Model
         useCustomCodingModel: appSettings.useCustomCodingModel,
-        codingApiModel: appSettings.codingApiModel,
+        codingApiModel: appSettings.useCustomCodingModel ? appSettings.codingApiModel : undefined,
         ollamaCodingModelName: appSettings.useCustomCodingModel && appSettings.codingApiModel === 'ollama' ? appSettings.ollamaCodingModelName : undefined,
-        llamafilePath: appSettings.llamafilePath,
+        geminiCodingModelName: appSettings.useCustomCodingModel && appSettings.codingApiModel === 'gemini' ? appSettings.geminiCodingModelName : undefined,
+        openrouterCodingModelName: appSettings.useCustomCodingModel && appSettings.codingApiModel === 'openrouter' ? appSettings.openrouterCodingModelName : undefined,
+        huggingfaceCodingModelName: appSettings.useCustomCodingModel && appSettings.codingApiModel === 'huggingface' ? appSettings.huggingfaceCodingModelName : undefined,
+        
+        // Paths & API Keys
+        llamafilePath: appSettings.mainApiModel === 'llamafile' || (appSettings.useCustomReasoningModel && appSettings.reasoningApiModel === 'llamafile') || (appSettings.useCustomCodingModel && appSettings.codingApiModel === 'llamafile') ? appSettings.llamafilePath : undefined,
+        geminiApiKey: appSettings.geminiApiKey || undefined,
+        openrouterApiKey: appSettings.openrouterApiKey || undefined,
+        huggingfaceApiKey: appSettings.huggingfaceApiKey || undefined,
       };
       
       const result = await intelligentMerge(fullInput);
