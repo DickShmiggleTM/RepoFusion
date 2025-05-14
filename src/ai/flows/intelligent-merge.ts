@@ -35,6 +35,9 @@ const IntelligentMergeInputSchema = z.object({
   codingApiModel: ApiModelSchema.describe('The API model to use for coding tasks, if useCustomCodingModel is true.'),
   ollamaCodingModelName: z.string().optional().describe('The name of the Ollama model to use for coding, if codingApiModel is "ollama".'),
   llamafilePath: z.string().optional().describe('Path or URL to the Llamafile, if selected for any model type.'),
+  geminiApiKey: z.string().optional().describe('API Key for Gemini (Google AI).'),
+  openrouterApiKey: z.string().optional().describe('API Key for OpenRouter.'),
+  huggingfaceApiKey: z.string().optional().describe('API Key for HuggingFace.'),
 });
 export type IntelligentMergeInput = z.infer<typeof IntelligentMergeInputSchema>;
 
@@ -64,7 +67,7 @@ Repositories:
 {{#each repositoryUrls}}- {{{this}}}
 {{/each}}
 
-Target Language: {{{targetLanguage}}}
+Target Language: {{#if targetLanguage}}{{{targetLanguage}}}{{else}}Not specified{{/if}}
 
 Main API Model: {{{mainApiModel}}}
 {{#if ollamaMainModelName}}Ollama Main Model Name: {{{ollamaMainModelName}}}{{/if}}
@@ -81,7 +84,11 @@ Coding API Model: {{{codingApiModel}}}
 
 {{#if llamafilePath}}Llamafile Path (if Llamafile selected for any model): {{{llamafilePath}}}{{/if}}
 
-Instructions: {{{instructions}}}
+{{#if geminiApiKey}}Gemini API Key: [Provided]{{else}}Gemini API Key: [Not Provided]{{/if}}
+{{#if openrouterApiKey}}OpenRouter API Key: [Provided]{{else}}OpenRouter API Key: [Not Provided]{{/if}}
+{{#if huggingfaceApiKey}}HuggingFace API Key: [Provided]{{else}}HuggingFace API Key: [Not Provided]{{/if}}
+
+Instructions: {{#if instructions}}{{{instructions}}}{{else}}No additional instructions provided.{{/if}}
 
 Provide the complete, working, and fully functional merged codebase, as well as a summary of the merging process, including conflict resolution and integration strategies.
 
@@ -98,7 +105,7 @@ const intelligentMergeFlow = ai.defineFlow(
   },
   async input => {
     // For now, the flow uses the globally configured model in genkit.ts.
-    // Future work: Dynamically select model/plugins based on input settings.
+    // Future work: Dynamically select model/plugins based on input settings, including API keys.
     // This includes handling 'llamafile' by potentially invoking a local Llamafile executable
     // or 'ollama' by making requests to a local Ollama server via a custom Genkit tool/action.
     const {output} = await prompt(input);

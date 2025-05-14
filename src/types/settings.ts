@@ -3,7 +3,7 @@ export type ApiModelType = 'gemini' | 'openrouter' | 'huggingface' | 'llamafile'
 
 export interface AppSettings {
   mainApiModel: ApiModelType;
-  ollamaMainModelName?: string; 
+  ollamaMainModelName?: string;
   useCustomReasoningModel: boolean;
   reasoningApiModel?: ApiModelType;
   ollamaReasoningModelName?: string;
@@ -11,6 +11,9 @@ export interface AppSettings {
   codingApiModel?: ApiModelType;
   ollamaCodingModelName?: string;
   llamafilePath?: string;
+  geminiApiKey?: string;
+  openrouterApiKey?: string;
+  huggingfaceApiKey?: string;
 }
 
 export const defaultAppSettings: AppSettings = {
@@ -23,4 +26,5 @@ export const defaultAppSettings: AppSettings = {
   codingApiModel: 'gemini',
   ollamaCodingModelName: 'codellama', // Default Ollama model suggestion for coding
   llamafilePath: '',
-};
+  geminiApiKey: '',
+  
