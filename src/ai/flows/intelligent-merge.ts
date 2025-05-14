@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -75,10 +76,9 @@ const defineIntelligentMergePrompt = (aiInstance: typeof globalAi) => aiInstance
   name: 'intelligentMergePrompt',
   input: {schema: IntelligentMergeInputSchema},
   output: {schema: IntelligentMergeOutputSchema},
-  prompt: `You are an expert software architect and engineer tasked with conceptualizing and planning the merger of codebases from multiple GitHub repositories. Your output will be a conceptual multi-file prototype and a detailed summary.
+  prompt: `You are an expert software architect and AI engineer tasked with conceptualizing and planning the merger of codebases from multiple GitHub repositories. Your output will be a conceptual multi-file prototype and a detailed summary of your plan.
 
-Analyze the provided repositories:
-Repositories:
+Source Repositories to Analyze:
 {{#each repositoryUrls}}- {{{this}}}
 {{/each}}
 
@@ -88,14 +88,14 @@ User's Additional Instructions: {{#if instructions}}{{{instructions}}}{{else}}No
 
 User's Preferred AI Toolchain Configuration (for your contextual awareness only; perform the task using your current capabilities):
 - Main Generation Model Type: {{{mainApiModel}}}
-{{#if ollamaMainModelName}}  - Ollama Main Model: {{{ollamaMainModelName}}} (Base name: {{{ollamaMainModelName}}}){{/if}}
+{{#if ollamaMainModelName}}  - Ollama Main Model: {{{ollamaMainModelName}}} (Base name: {{ollamaMainModelName}}){{/if}}
 {{#if geminiMainModelName}}  - Gemini Main Model: {{{geminiMainModelName}}}{{/if}}
 {{#if openrouterMainModelName}}  - OpenRouter Main Model: {{{openrouterMainModelName}}}{{/if}}
 {{#if huggingfaceMainModelName}}  - HuggingFace Main Model: {{{huggingfaceMainModelName}}}{{/if}}
 
 {{#if useCustomReasoningModel}}
 - Reasoning Model Type: {{{reasoningApiModel}}}
-{{#if ollamaReasoningModelName}}  - Ollama Reasoning Model: {{{ollamaReasoningModelName}}} (Base name: {{{ollamaReasoningModelName}}}){{/if}}
+{{#if ollamaReasoningModelName}}  - Ollama Reasoning Model: {{{ollamaReasoningModelName}}} (Base name: {{ollamaReasoningModelName}}){{/if}}
 {{#if geminiReasoningModelName}}  - Gemini Reasoning Model: {{{geminiReasoningModelName}}}{{/if}}
 {{#if openrouterReasoningModelName}}  - OpenRouter Reasoning Model: {{{openrouterReasoningModelName}}}{{/if}}
 {{#if huggingfaceReasoningModelName}}  - HuggingFace Reasoning Model: {{{huggingfaceReasoningModelName}}}{{/if}}
@@ -105,7 +105,7 @@ User's Preferred AI Toolchain Configuration (for your contextual awareness only;
 
 {{#if useCustomCodingModel}}
 - Coding Model Type: {{{codingApiModel}}}
-{{#if ollamaCodingModelName}}  - Ollama Coding Model: {{{ollamaCodingModelName}}} (Base name: {{{ollamaCodingModelName}}}){{/if}}
+{{#if ollamaCodingModelName}}  - Ollama Coding Model: {{{ollamaCodingModelName}}} (Base name: {{ollamaCodingModelName}}){{/if}}
 {{#if geminiCodingModelName}}  - Gemini Coding Model: {{{geminiCodingModelName}}}{{/if}}
 {{#if openrouterCodingModelName}}  - OpenRouter Coding Model: {{{openrouterCodingModelName}}}{{/if}}
 {{#if huggingfaceCodingModelName}}  - HuggingFace Coding Model: {{{huggingfaceCodingModelName}}}{{/if}}
@@ -115,34 +115,33 @@ User's Preferred AI Toolchain Configuration (for your contextual awareness only;
 
 {{#if llamafilePath}}Llamafile Path (if Llamafile selected for any model): {{{llamafilePath}}}{{/if}}
 
-API Keys Provided by User (for context only):
+API Keys Provided by User (for context only, you will use your configured capabilities):
 - Gemini Key: {{#if geminiApiKey}}Provided{{else}}Not provided{{/if}}
 - OpenRouter Key: {{#if openrouterApiKey}}Provided{{else}}Not provided{{/if}}
 - HuggingFace Key: {{#if huggingfaceApiKey}}Provided{{else}}Not provided{{/if}}
 
-Your Task:
-1.  **Conceptual Merge Plan & Multi-File Prototype (Field: "files"):**
-    a.  First, analyze the input repositories to understand their languages, frameworks, and core functionalities.
-    b.  Propose a sensible file and directory structure for the merged project. This structure should be logical and follow common conventions for the target language/framework.
-    c.  Generate a representative set of key files (e.g., 5-15 critical files) for this structure.
-    d.  For each file, provide:
-        i.  A 'path' (e.g., "src/components/MyComponent.tsx", "server/api/routes.js", "package.json", "README.md"). Use standard naming conventions.
-        ii. 'content' (the actual textual code, configuration, or markdown for that file).
-    e.  The content should demonstrate how core functionalities from different repositories might be integrated, how new shared components might look, or essential boilerplate for the target technology stack.
-    f.  If a 'targetLanguage' is specified (e.g., "TypeScript", "Python"), ensure you include common boilerplate files (e.g., a basic 'package.json' and 'tsconfig.json' for TypeScript/Node.js; 'requirements.txt' or 'pyproject.toml' for Python).
-    g.  This output is for a prototype. It's NOT expected to be a complete, immediately runnable, or exhaustive codebase but should provide a strong conceptual and structural foundation.
+Your Task is to produce a conceptual plan and a multi-file prototype. Structure your response as follows:
 
-2.  **Comprehensive Summary (Field: "summary"):**
-    a.  Provide a detailed summary of your conceptual merging process.
-    b.  Explain your analysis of the source repositories (languages, frameworks, key features).
-    c.  Describe the proposed integration strategies for core functionalities.
-    d.  Identify potential challenges (e.g., version conflicts, differing architectures, overlapping features, dependency complexities).
-    e.  Explain hypothetical conflict resolution strategies.
-    f.  Outline the main steps involved in this conceptual merge.
-    g.  Justify the rationale behind your proposed merged file structure and integration choices.
+**Part 1: Analysis and Merge Plan (Field: "summary")**
+   a.  **Source Repository Analysis:** Briefly describe each input repository: its primary language, framework, key functionalities, and overall purpose.
+   b.  **Core Feature Integration Strategy:** Identify the core features from each repository that should be merged. Describe how you plan to integrate these features.
+   c.  **Architectural Proposal:** Propose a high-level architecture for the merged application. Mention key patterns or technologies you'd envision using.
+   d.  **Potential Challenges & Conflict Resolution:** Identify potential challenges (e.g., differing architectural styles, dependency conflicts, overlapping features). Outline hypothetical strategies to resolve these.
+   e.  **Rationale for Structure:** Justify the file and directory structure you will propose in Part 2. Explain how it supports the merged functionalities and target language/framework.
 
-Ensure your entire response strictly adheres to the JSON schema for the output, providing content for both 'files' and 'summary' fields. The 'files' array should not be empty if a merge is deemed possible.
-Each file object in the 'files' array must have a 'path' (string) and 'content' (string).
+**Part 2: Conceptual Multi-File Prototype (Field: "files")**
+   a.  **File and Directory Structure:** Based on your plan, define a logical file and directory structure for the merged project. This structure should follow common conventions for the target language/framework (if specified, otherwise infer or use the primary language of the repos).
+   b.  **Key File Generation (5-15 critical files):**
+       i.  Provide an array of file objects. Each object must have a 'path' (e.g., "src/components/MyComponent.tsx", "server/api/routes.js", "package.json", "README.md") and 'content' (the actual textual code, configuration, or markdown for that file).
+       ii. Ensure standard naming conventions for common file types are used (e.g., 'package.json', 'tsconfig.json' for TypeScript/Node.js; 'requirements.txt' or 'pyproject.toml' for Python if specified as targetLanguage).
+       iii. The content should be representative of the merged concept, demonstrating how functionalities integrate or how new shared components might look. It should be substantial enough to convey the idea.
+   c.  **Boilerplate:** If a 'targetLanguage' is specified (e.g., "TypeScript", "Python"), ensure you include essential boilerplate files. For example:
+       - For TypeScript/Node.js: A basic 'package.json' (with conceptual dependencies) and 'tsconfig.json'.
+       - For Python: A 'requirements.txt' or 'pyproject.toml' (with conceptual dependencies).
+   d.  **Prototype Nature:** This output is for a *conceptual prototype*. It's NOT expected to be a complete, immediately runnable, or exhaustive production-ready codebase. It should, however, provide a strong structural and conceptual foundation for such a project.
+
+Ensure your entire response strictly adheres to the JSON schema for the output, providing content for both 'files' (an array of file objects) and 'summary' (a string) fields.
+Each file object in the 'files' array must have a 'path' (string) and 'content' (string). Do not produce empty files or files with placeholder content like "TODO". The content should be your best attempt at representing the merged logic.
 `,
 });
 
@@ -170,26 +169,24 @@ const intelligentMergeFlow = globalAi.defineFlow(
         modelToUse = `googleai/${input.geminiMainModelName}`;
       } catch (e) {
         console.error("IntelligentMerge: Failed to initialize temporary Genkit instance with user's Gemini key.", e);
-        // Fallback to default Genkit instance if custom key init fails
-        currentAi = globalAi; // Reset to global AI
-        configuredPrompt = defineIntelligentMergePrompt(currentAi); // Re-define prompt with global AI
-        modelToUse = `googleai/${input.geminiMainModelName}`;
+        currentAi = globalAi; 
+        configuredPrompt = defineIntelligentMergePrompt(currentAi); 
+        modelToUse = `googleai/${input.geminiMainModelName}`; 
       }
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'ollama' && input.ollamaMainModelName) {
       baseModelName = input.ollamaMainModelName.split(':')[0];
       modelToUse = `ollama/${baseModelName}`;
-      console.warn(`IntelligentMerge: Ollama model selected: ${input.ollamaMainModelName}. Using base name for Genkit: ${baseModelName}. Ensure Genkit is configured with an Ollama plugin.`);
+      console.warn(`IntelligentMerge: Ollama model selected: ${input.ollamaMainModelName}. Using base name for Genkit: ${baseModelName}. Ensure Genkit is configured with an Ollama plugin and the model is available locally.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
-      console.warn("IntelligentMerge: OpenRouter model selected. Ensure Genkit is configured with an OpenRouter plugin for this to work.");
+      console.warn("IntelligentMerge: OpenRouter model selected. Ensure Genkit is configured with an OpenRouter plugin and API key for this to work.");
     } else if (input.mainApiModel === 'huggingface' && input.huggingfaceMainModelName) {
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
-      console.warn("IntelligentMerge: HuggingFace model selected. Ensure Genkit is configured with a HuggingFace plugin for this to work.");
+      console.warn("IntelligentMerge: HuggingFace model selected. Ensure Genkit is configured with a HuggingFace plugin and API key for this to work.");
     } else if (input.mainApiModel === 'llamafile') {
-      console.warn("IntelligentMerge: Llamafile selected as main model. Using default model for generation. Llamafile path is available in prompt context.");
-      // No specific modelToUse is set here, relying on default or prompt-defined model.
+      console.warn("IntelligentMerge: Llamafile selected as main model. Using default model for generation. Ensure Llamafile is running and accessible if Genkit is configured for it. Llamafile path is available in prompt context.");
     }
 
     const {output} = await configuredPrompt(input, modelToUse ? { model: modelToUse } : undefined);
@@ -198,22 +195,27 @@ const intelligentMergeFlow = globalAi.defineFlow(
       throw new Error('The AI model did not return a valid output. Please try again with a more specific prompt or check model availability.');
     }
     if (typeof output.summary !== 'string' || !output.summary.trim()) {
-        throw new Error('The AI model returned an invalid or empty summary. Please refine your request.');
+        throw new Error('The AI model returned an invalid or empty summary. Please refine your request or check model output format instructions.');
     }
     if (!Array.isArray(output.files)) {
-        throw new Error('The AI model returned an invalid data structure for "files". Expected an array.');
+        throw new Error('The AI model returned an invalid data structure for "files". Expected an array of file objects.');
     }
     
     if (output.files.length > 0) {
       for (const file of output.files) {
+        if (!file || typeof file !== 'object') {
+          throw new Error('Invalid item in "files" array: Expected file objects.');
+        }
         if (typeof file.path !== 'string' || !file.path.trim()) {
           throw new Error('Invalid file object in AI output: "path" must be a non-empty string.');
         }
-        if (typeof file.content !== 'string') { 
-          throw new Error(`Invalid file object in AI output for path "${file.path}": "content" must be a string.`);
+        if (typeof file.content !== 'string') { // Content can be empty, but must be a string
+          throw new Error(`Invalid file object in AI output for path "${file.path}": "content" must be a string, even if empty.`);
         }
       }
     }
+    // It's possible to have a valid summary but no files if the merge is deemed not feasible or very simple.
+    // If files are expected, a check like `if (output.files.length === 0 && some_condition_meaning_files_were_expected)` could be added.
     return output;
   }
 );
@@ -221,3 +223,4 @@ const intelligentMergeFlow = globalAi.defineFlow(
 export async function intelligentMerge(input: IntelligentMergeInput): Promise<IntelligentMergeOutput> {
   return intelligentMergeFlow(input);
 }
+
