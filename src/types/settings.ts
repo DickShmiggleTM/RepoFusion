@@ -1,5 +1,5 @@
 
-export type ApiModelType = 'gemini' | 'openrouter' | 'huggingface';
+export type ApiModelType = 'gemini' | 'openrouter' | 'huggingface' | 'llamafile';
 
 export interface AppSettings {
   mainApiModel: ApiModelType;
@@ -7,6 +7,7 @@ export interface AppSettings {
   reasoningApiModel?: ApiModelType;
   useCustomCodingModel: boolean;
   codingApiModel?: ApiModelType;
+  llamafilePath?: string; // Path or URL to the Llamafile
 }
 
 export const defaultAppSettings: AppSettings = {
@@ -15,4 +16,5 @@ export const defaultAppSettings: AppSettings = {
   reasoningApiModel: 'gemini',
   useCustomCodingModel: false,
   codingApiModel: 'gemini',
+  llamafilePath: '',
 };

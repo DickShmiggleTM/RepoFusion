@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Cog } from 'lucide-react';
+import { Input } from "@/components/ui/input"; // Added Input
+import { Cog, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ const apiModelOptions: { value: ApiModelType; label: string }[] = [
   { value: 'gemini', label: 'Gemini (Google AI)' },
   { value: 'openrouter', label: 'OpenRouter' },
   { value: 'huggingface', label: 'HuggingFace' },
+  { value: 'llamafile', label: 'Llamafile (Experimental)' },
 ];
 
 export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }: SettingsDialogProps) {
@@ -48,17 +50,13 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
     onOpenChange(false);
   };
 
-  const handleMainModelChange = (value: string) => {
-    setSettings(prev => ({ ...prev, mainApiModel: value as ApiModelType }));
+  const handleModelChange = (field: keyof AppSettings, value: string) => {
+    setSettings(prev => ({ ...prev, [field]: value as ApiModelType }));
   };
-
-  const handleReasoningModelChange = (value: string) => {
-    setSettings(prev => ({ ...prev, reasoningApiModel: value as ApiModelType }));
-  };
-
-  const handleCodingModelChange = (value: string) => {
-    setSettings(prev => ({ ...prev, codingApiModel: value as ApiModelType }));
-  };
+  
+  const isLlamafileSelected = settings.mainApiModel === 'llamafile' ||
+                             (settings.useCustomReasoningModel && settings.reasoningApiModel === 'llamafile') ||
+                             (settings.useCustomCodingModel && settings.codingApiModel === 'llamafile');
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -71,7 +69,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
           <DialogDescription>
             Configure the AI models for repository merging.
             <br />
-            <span className="text-xs text-muted-foreground">Note: OpenRouter and HuggingFace are UI placeholders and not fully integrated yet.</span>
+            <span className="text-xs text-muted-foreground">Note: OpenRouter, HuggingFace, and Llamafile are UI placeholders. Llamafile requires backend setup to access the specified path.</span>
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4">
@@ -81,7 +79,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
             </Label>
             <Select
               value={settings.mainApiModel}
-              onValueChange={handleMainModelChange}
+              onValueChange={(value) => handleModelChange('mainApiModel', value)}
             >
               <SelectTrigger id="mainApiModel" className="col-span-3 bg-input border-primary/50 focus:border-primary">
                 <SelectValue placeholder="Select main model" />
@@ -115,7 +113,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
               </Label>
               <Select
                 value={settings.reasoningApiModel}
-                onValueChange={handleReasoningModelChange}
+                onValueChange={(value) => handleModelChange('reasoningApiModel', value)}
                 disabled={!settings.useCustomReasoningModel}
               >
                 <SelectTrigger id="reasoningApiModel" className="col-span-3 bg-input border-primary/50 focus:border-primary">
@@ -151,7 +149,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
               </Label>
               <Select
                 value={settings.codingApiModel}
-                onValueChange={handleCodingModelChange}
+                onValueChange={(value) => handleModelChange('codingApiModel', value)}
                 disabled={!settings.useCustomCodingModel}
               >
                 <SelectTrigger id="codingApiModel" className="col-span-3 bg-input border-primary/50 focus:border-primary">
@@ -167,6 +165,26 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
               </Select>
             </div>
           )}
+          
+          {isLlamafileSelected && (
+            <div className="col-span-4 space-y-2 mt-2 p-3 border border-dashed border-primary/50 rounded-md bg-muted/20">
+              <Label htmlFor="llamafilePath" className="text-primary/90 flex items-center">
+                <AlertTriangle size={16} className="mr-2 text-primary" />
+                Llamafile Path/URL
+              </Label>
+              <Input
+                id="llamafilePath"
+                value={settings.llamafilePath || ''}
+                onChange={(e) => setSettings(prev => ({ ...prev, llamafilePath: e.target.value }))}
+                placeholder="e.g., /path/to/model.llamafile or http://localhost:8080"
+                className="bg-input border-primary/50 focus:border-primary"
+              />
+              <p className="text-xs text-muted-foreground">
+                Provide the local path or accessible URL for the Llamafile. The backend must be configured to access and execute this file. This feature is experimental.
+              </p>
+            </div>
+          )}
+
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} className="border-primary text-primary hover:bg-primary/10">Cancel</Button>

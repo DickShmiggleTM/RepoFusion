@@ -58,12 +58,11 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
 
   const onSubmit = async (data: RepoInputFormData) => {
     setIsLoading(true);
-    setProgress(0); // Reset progress
+    setProgress(0); 
 
-    // Simulate progress for UX
     const progressInterval = setInterval(() => {
       setProgress(prev => {
-        if (prev >= 90) return 90; // Cap at 90% until actual completion
+        if (prev >= 90) return 90; 
         return prev + 10;
       });
     }, 300);
@@ -78,6 +77,7 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
         reasoningApiModel: appSettings.reasoningApiModel,
         useCustomCodingModel: appSettings.useCustomCodingModel,
         codingApiModel: appSettings.codingApiModel,
+        llamafilePath: appSettings.llamafilePath, // Pass Llamafile path
       };
       
       const result = await intelligentMerge(fullInput);
@@ -95,7 +95,6 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
         variant: "destructive",
       });
     } finally {
-      // Short delay before resetting loading state to allow progress bar to show 100%
       setTimeout(() => {
         setIsLoading(false);
         setProgress(0);
@@ -106,7 +105,7 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
   return (
     <Window title="RepoFusion AI Merge Control" icon={<Terminal size={18} />} className="min-h-[400px]">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 h-full flex flex-col">
-        <fieldset disabled={isLoading} className="flex-grow contents"> {/* Wrap content in fieldset */}
+        <fieldset disabled={isLoading} className="flex-grow contents">
           <ScrollArea className="flex-grow pr-3">
             <div className="space-y-3">
               <div>
@@ -118,9 +117,10 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
                       placeholder={`https://github.com/user/repo${index + 1}`}
                       className="bg-input border-primary/50 focus:border-primary"
                       aria-invalid={errors.repositoryUrls?.[index] ? "true" : "false"}
+                      disabled={isLoading}
                     />
                     {fields.length > 2 && (
-                      <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="p-1 h-8 w-8" aria-label={`Remove repository URL ${index + 1}`}>
+                      <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} className="p-1 h-8 w-8" aria-label={`Remove repository URL ${index + 1}`} disabled={isLoading}>
                         <Trash2 size={16} />
                       </Button>
                     )}
@@ -149,6 +149,7 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
                   {...register("targetLanguage")}
                   placeholder="e.g., Python, JavaScript"
                   className="bg-input border-primary/50 focus:border-primary"
+                  disabled={isLoading}
                 />
               </div>
 
@@ -159,6 +160,7 @@ export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProp
                   {...register("instructions")}
                   placeholder="e.g., Prioritize features from repo1, resolve conflicts by..."
                   className="bg-input border-primary/50 focus:border-primary min-h-[80px]"
+                  disabled={isLoading}
                 />
               </div>
             </div>
