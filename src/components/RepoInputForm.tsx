@@ -19,13 +19,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { AppSettings } from '@/types/settings';
 import { Progress } from '@/components/ui/progress';
 
-const MAX_REPOS = 5;
+const MAX_REPOS = 15; // Updated from 5 to 15
 
 const formSchema = z.object({
   repositoryUrls: z.array(
       z.string().url({ message: "Invalid URL format." }).min(1, { message: "URL cannot be empty." })
     )
-    .min(1, { message: "At least one repository URL is required." }) // Changed from 2 to 1 for flexibility with recommendations
+    .min(1, { message: "At least one repository URL is required." })
     .max(MAX_REPOS, { message: `A maximum of ${MAX_REPOS} repository URLs are allowed.` }),
   targetLanguage: z.string().optional(),
   instructions: z.string().optional(),
@@ -68,7 +68,6 @@ export const RepoInputForm = forwardRef<RepoInputFormHandle, RepoInputFormProps>
         let addedCount = 0;
 
         // Try to fill empty fields first
-        let filledEmpty = false;
         const updatedFields: Partial<FieldArrayWithId<RepoInputFormData, "repositoryUrls", "id">>[] = [];
         fields.forEach((field, index) => {
             if (!field.value?.trim() && urlsToAdd.length > 0 && currentUrls.length + addedCount < MAX_REPOS) {
@@ -77,7 +76,6 @@ export const RepoInputForm = forwardRef<RepoInputFormHandle, RepoInputFormProps>
                     update(index, nextUrl);
                     currentUrls.push(nextUrl); // Add to currentUrls to avoid duplicate appends
                     addedCount++;
-                    filledEmpty = true;
                 }
             }
         });
@@ -109,7 +107,7 @@ export const RepoInputForm = forwardRef<RepoInputFormHandle, RepoInputFormProps>
 
     const onSubmit = async (data: RepoInputFormData) => {
       const validUrls = data.repositoryUrls.filter(url => url && url.trim() !== '');
-      if (validUrls.length < 1) { // Or 2, if you want to enforce minimum for merge
+      if (validUrls.length < 1) {
           toast({ title: "Validation Error", description: "At least one valid repository URL is required to merge.", variant: "destructive"});
           return;
       }
@@ -179,8 +177,6 @@ export const RepoInputForm = forwardRef<RepoInputFormHandle, RepoInputFormProps>
         if (fields.length > 1) {
             remove(index);
         } else if (fields.length === 1) {
-            // If it's the last field, clear its value instead of removing it
-            // to ensure there's always at least one input field present.
             update(index, ''); 
         }
     };
@@ -266,3 +262,5 @@ export const RepoInputForm = forwardRef<RepoInputFormHandle, RepoInputFormProps>
   }
 );
 RepoInputForm.displayName = "RepoInputForm";
+
+    
