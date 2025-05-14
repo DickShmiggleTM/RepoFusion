@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { IntelligentMergeInput, IntelligentMergeOutput } from '@/ai/flows/intelligent-merge';
@@ -5,7 +6,7 @@ import { intelligentMerge } from '@/ai/flows/intelligent-merge';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Terminal, PlusCircle, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
@@ -15,22 +16,31 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Window } from '@/components/Window';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import type { AppSettings } from '@/types/settings';
+
+const MAX_REPOS = 5;
 
 const formSchema = z.object({
-  repositoryUrls: z.array(z.string().url({ message: "Invalid URL format." }).min(1, { message: "URL cannot be empty." })).min(2, { message: "At least two repository URLs are required." }),
+  repositoryUrls: z.array(z.string().url({ message: "Invalid URL format." }).min(1, { message: "URL cannot be empty." }))
+    .min(2, { message: "At least two repository URLs are required." })
+    .max(MAX_REPOS, { message: `A maximum of ${MAX_REPOS} repository URLs are allowed.` }),
   targetLanguage: z.string().optional(),
   instructions: z.string().optional(),
 });
 
+// Base type for the form, excluding settings
+type RepoInputFormData = z.infer<typeof formSchema>;
+
 type RepoInputFormProps = {
   onMergeSuccess: (output: IntelligentMergeOutput) => void;
+  appSettings: AppSettings;
 };
 
-export function RepoInputForm({ onMergeSuccess }: RepoInputFormProps) {
+export function RepoInputForm({ onMergeSuccess, appSettings }: RepoInputFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const { control, handleSubmit, register, formState: { errors } } = useForm<IntelligentMergeInput>({
+  const { control, handleSubmit, register, formState: { errors } } = useForm<RepoInputFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       repositoryUrls: ['', ''],
@@ -44,11 +54,21 @@ export function RepoInputForm({ onMergeSuccess }: RepoInputFormProps) {
     name: "repositoryUrls",
   });
 
-  const onSubmit = async (data: IntelligentMergeInput) => {
+  const onSubmit = async (data: RepoInputFormData) => {
     setIsLoading(true);
     try {
       toast({ title: "🤖 AI Merge Initiated", description: "The AI is processing your repositories. This may take a moment..." });
-      const result = await intelligentMerge(data);
+      
+      const fullInput: IntelligentMergeInput = {
+        ...data,
+        mainApiModel: appSettings.mainApiModel,
+        useCustomReasoningModel: appSettings.useCustomReasoningModel,
+        reasoningApiModel: appSettings.reasoningApiModel,
+        useCustomCodingModel: appSettings.useCustomCodingModel,
+        codingApiModel: appSettings.codingApiModel,
+      };
+      
+      const result = await intelligentMerge(fullInput);
       onMergeSuccess(result);
       toast({ title: "✅ Merge Successful!", description: "The AI has completed the merge." });
     } catch (error) {
@@ -69,7 +89,7 @@ export function RepoInputForm({ onMergeSuccess }: RepoInputFormProps) {
         <ScrollArea className="flex-grow pr-3">
           <div className="space-y-3">
             <div>
-              <Label htmlFor="repositoryUrls" className="text-primary">Repository URLs (at least 2)</Label>
+              <Label htmlFor="repositoryUrls" className="text-primary">Repository URLs (2 to {MAX_REPOS})</Label>
               {fields.map((field, index) => (
                 <div key={field.id} className="flex items-center space-x-2 mt-1">
                   <Input
@@ -84,12 +104,20 @@ export function RepoInputForm({ onMergeSuccess }: RepoInputFormProps) {
                   )}
                 </div>
               ))}
-              {errors.repositoryUrls && <p className="text-destructive text-xs mt-1">{errors.repositoryUrls.message || errors.repositoryUrls.root?.message}</p>}
+              {(errors.repositoryUrls?.message || errors.repositoryUrls?.root?.message) && <p className="text-destructive text-xs mt-1">{errors.repositoryUrls.message || errors.repositoryUrls.root?.message}</p>}
               {fields.map((_, index) => errors.repositoryUrls?.[index] && <p key={index} className="text-destructive text-xs mt-1">{errors.repositoryUrls[index]?.message}</p>)}
 
-              <Button type="button" variant="outline" size="sm" onClick={() => append('')} className="mt-2 border-primary text-primary hover:bg-primary/10 hover:text-primary">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={() => append('')} 
+                className="mt-2 border-primary text-primary hover:bg-primary/10 hover:text-primary"
+                disabled={fields.length >= MAX_REPOS}
+              >
                 <PlusCircle size={16} className="mr-2" /> Add Repository URL
               </Button>
+               {fields.length >= MAX_REPOS && <p className="text-muted-foreground text-xs mt-1">Maximum {MAX_REPOS} repositories allowed.</p>}
             </div>
 
             <div>
