@@ -3,7 +3,7 @@
 
 import { recommendRepos, type RecommendReposInput, type RecommendReposOutput } from '@/ai/flows/recommend-repos-flow';
 import type { AppSettings } from '@/types/settings';
-import { Lightbulb, ListPlus, Loader2, ServerCrash, Sparkles, AlertTriangle } from 'lucide-react';
+import { Lightbulb, ListPlus, Loader2, ServerCrash, Sparkles, AlertTriangle, RotateCw } from 'lucide-react';
 import { useState } from 'react';
 import { Window } from '@/components/Window';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
   const [recommendations, setRecommendations] = useState<RecommendReposOutput['recommendations'] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState<string>("Error Fetching Recommendations");
   const [isServiceUnavailable, setIsServiceUnavailable] = useState(false);
   const { toast } = useToast();
 
@@ -41,50 +42,65 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
     setError(null);
     setIsServiceUnavailable(false);
     setRecommendations(null);
+    setErrorTitle("Error Fetching Recommendations");
+
+
+    const flowInput: RecommendReposInput = {
+      mode,
+      promptDescription: mode === 'promptBased' ? promptDescription : undefined,
+      mainApiModel: appSettings.mainApiModel,
+      ollamaMainModelName: appSettings.mainApiModel === 'ollama' ? appSettings.ollamaMainModelName : undefined,
+      geminiMainModelName: appSettings.mainApiModel === 'gemini' ? appSettings.geminiMainModelName : undefined,
+      openrouterMainModelName: appSettings.mainApiModel === 'openrouter' ? appSettings.openrouterMainModelName : undefined,
+      huggingfaceMainModelName: appSettings.mainApiModel === 'huggingface' ? appSettings.huggingfaceMainModelName : undefined,
+      llamafilePath: appSettings.mainApiModel === 'llamafile' ? appSettings.llamafilePath : undefined,
+      geminiApiKey: appSettings.geminiApiKey,
+      openrouterApiKey: appSettings.openrouterApiKey,
+      huggingfaceApiKey: appSettings.huggingfaceApiKey,
+      useCustomReasoningModel: appSettings.useCustomReasoningModel,
+      reasoningApiModel: appSettings.reasoningApiModel,
+      ollamaReasoningModelName: appSettings.ollamaReasoningModelName,
+      geminiReasoningModelName: appSettings.geminiReasoningModelName,
+      openrouterReasoningModelName: appSettings.openrouterReasoningModelName,
+      huggingfaceReasoningModelName: appSettings.huggingfaceReasoningModelName,
+      useCustomCodingModel: appSettings.useCustomCodingModel,
+      codingApiModel: appSettings.codingApiModel,
+      ollamaCodingModelName: appSettings.ollamaCodingModelName,
+      geminiCodingModelName: appSettings.geminiCodingModelName,
+      openrouterCodingModelName: appSettings.openrouterCodingModelName,
+      huggingfaceCodingModelName: appSettings.huggingfaceCodingModelName,
+    };
 
     try {
-      const flowInput: RecommendReposInput = {
-        mode,
-        promptDescription: mode === 'promptBased' ? promptDescription : undefined,
-        mainApiModel: appSettings.mainApiModel,
-        ollamaMainModelName: appSettings.mainApiModel === 'ollama' ? appSettings.ollamaMainModelName : undefined,
-        geminiMainModelName: appSettings.mainApiModel === 'gemini' ? appSettings.geminiMainModelName : undefined,
-        openrouterMainModelName: appSettings.mainApiModel === 'openrouter' ? appSettings.openrouterMainModelName : undefined,
-        huggingfaceMainModelName: appSettings.mainApiModel === 'huggingface' ? appSettings.huggingfaceMainModelName : undefined,
-        llamafilePath: appSettings.mainApiModel === 'llamafile' ? appSettings.llamafilePath : undefined,
-        geminiApiKey: appSettings.geminiApiKey,
-        openrouterApiKey: appSettings.openrouterApiKey,
-        huggingfaceApiKey: appSettings.huggingfaceApiKey,
-        useCustomReasoningModel: appSettings.useCustomReasoningModel,
-        reasoningApiModel: appSettings.reasoningApiModel,
-        ollamaReasoningModelName: appSettings.ollamaReasoningModelName,
-        geminiReasoningModelName: appSettings.geminiReasoningModelName,
-        openrouterReasoningModelName: appSettings.openrouterReasoningModelName,
-        huggingfaceReasoningModelName: appSettings.huggingfaceReasoningModelName,
-        useCustomCodingModel: appSettings.useCustomCodingModel,
-        codingApiModel: appSettings.codingApiModel,
-        ollamaCodingModelName: appSettings.ollamaCodingModelName,
-        geminiCodingModelName: appSettings.geminiCodingModelName,
-        openrouterCodingModelName: appSettings.openrouterCodingModelName,
-        huggingfaceCodingModelName: appSettings.huggingfaceCodingModelName,
-      };
       const result = await recommendRepos(flowInput);
       setRecommendations(result.recommendations);
       toast({ title: "Recommendations Ready!", description: "AI has suggested some repositories." });
     } catch (err) {
       const errorMessage = (err as Error).message;
-      setError(errorMessage);
-      if (errorMessage.includes('503') || errorMessage.toLowerCase().includes('service unavailable') || errorMessage.toLowerCase().includes('overloaded')) {
+      let detailedErrorMessage = errorMessage;
+      let currentErrorTitle = "Recommendation Failed";
+      setIsServiceUnavailable(false);
+
+      if (errorMessage.includes('NOT_FOUND') && flowInput.mainApiModel) {
+        currentErrorTitle = `${flowInput.mainApiModel.charAt(0).toUpperCase() + flowInput.mainApiModel.slice(1)} Model Not Found`;
+        let specificAdvice = "Please ensure the model ID is correct and accessible.";
+        if (flowInput.mainApiModel === 'openrouter') {
+          specificAdvice = "Ensure the OpenRouter Genkit plugin is correctly configured in src/ai/genkit.ts and your OPENROUTER_API_KEY in .env is valid and has access to the model.";
+        } else if (flowInput.mainApiModel === 'huggingface') {
+          specificAdvice = "Ensure the HuggingFace Genkit plugin is configured in src/ai/genkit.ts, your HF_API_TOKEN in .env is valid, and the model ID is correct.";
+        } else if (flowInput.mainApiModel === 'ollama') {
+          specificAdvice = "Ensure your Ollama server is running, the specified model is pulled (e.g., 'ollama pull modelname'), and the Ollama Genkit plugin (if used) is configured in src/ai/genkit.ts.";
+        }
+        detailedErrorMessage = `${specificAdvice} Original error: ${errorMessage}`;
+      } else if (errorMessage.includes('503') || errorMessage.toLowerCase().includes('service unavailable') || errorMessage.toLowerCase().includes('overloaded')) {
+        currentErrorTitle = "AI Service Temporarily Unavailable";
+        detailedErrorMessage = "The AI model is currently busy or overloaded. Please try again in a few moments.";
         setIsServiceUnavailable(true);
-        toast({ 
-          title: "AI Service Overloaded", 
-          description: "The AI model is currently busy. Please try again in a few moments.", 
-          variant: "destructive",
-          duration: 5000,
-        });
-      } else {
-        toast({ title: "Recommendation Failed", description: errorMessage, variant: "destructive" });
       }
+      
+      setError(detailedErrorMessage);
+      setErrorTitle(currentErrorTitle);
+      toast({ title: currentErrorTitle, description: detailedErrorMessage, variant: "destructive", duration: 7000 });
       console.error("Error fetching recommendations:", err);
     } finally {
       setIsLoading(false);
@@ -150,14 +166,14 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
             ) : (
               <ServerCrash size={36} className="mb-3" />
             )}
-            <p className="font-semibold text-lg mb-1">
-              {isServiceUnavailable ? "AI Service Temporarily Unavailable" : "Error Fetching Recommendations"}
+            <p className="font-semibold text-lg mb-1 text-center">
+              {errorTitle}
             </p>
-            <p className="text-xs text-center mb-3 max-w-md">
-              {isServiceUnavailable ? "The AI model is currently overloaded. Please try again in a few moments." : error}
+            <p className="text-xs text-center mb-3 max-w-md break-words">
+              {error}
             </p>
-             {isServiceUnavailable && (
-              <Button variant="outline" onClick={() => handleGetRecommendations(promptDescription.trim() ? 'promptBased' : 'general')} className="mt-4">
+             {(isServiceUnavailable || errorTitle.includes("Model Not Found")) && (
+              <Button variant="outline" onClick={() => handleGetRecommendations(promptDescription.trim() ? 'promptBased' : 'general')} className="mt-4 border-primary text-primary hover:bg-primary/10">
                 <RotateCw size={16} className="mr-2"/> Try Again
               </Button>
             )}
@@ -209,3 +225,4 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
     </Window>
   );
 }
+
