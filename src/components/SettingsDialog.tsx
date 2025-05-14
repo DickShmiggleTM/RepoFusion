@@ -342,14 +342,21 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
             AI Model & API Key Settings
           </DialogTitle>
           <DialogDescription>
-            Configure AI models and provide API keys for external services. Model lists for Gemini and OpenRouter will load if API key is valid.
+            Configure AI models and API keys. API keys are stored in browser state (prototype only) and primarily for Gemini dynamic model use.
+            For OpenRouter & HuggingFace, backend Genkit plugins must be configured with keys from environment variables.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto custom-scrollbar pr-3">
           
           <div className="space-y-4 p-4 border border-dashed border-primary/50 rounded-md bg-muted/20">
-            <h4 className="text-md font-semibold text-primary flex items-center"><KeyRound size={18} className="mr-2"/>API Keys</h4>
+            <h4 className="text-md font-semibold text-primary flex items-center"><KeyRound size={18} className="mr-2"/>API Keys (Prototype Configuration)</h4>
             
+            <div className="col-span-4 mt-1 p-3 text-sm text-destructive font-medium bg-destructive/10 border border-destructive/50 rounded-md flex items-start">
+              <AlertTriangle size={20} className="mr-2 mt-0.5 shrink-0" />
+              <div><strong>Important Security Warning:</strong> API keys entered here are stored in browser state for this prototype. This is NOT secure for production environments. For actual deployments, API keys must be managed securely on the server-side (e.g., via environment variables loaded by Genkit plugins).
+              </div>
+            </div>
+
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="geminiApiKey" className="text-right col-span-1 text-primary/90">Gemini Key</Label>
               <Input id="geminiApiKey" type="password" value={settings.geminiApiKey || ''}
@@ -383,12 +390,8 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
                 placeholder="Enter HuggingFace Token"
                 className="col-span-3 bg-input border-primary/50 focus:border-primary" />
             </div>
-            <div className="col-span-4 mt-1 p-2 text-xs text-destructive/90 bg-destructive/10 border border-destructive/30 rounded-md flex items-start">
-              <AlertTriangle size={20} className="mr-2 mt-0.5 shrink-0" />
-              <div><strong>Security Warning:</strong> API keys are stored in browser state (prototype only). Not for production.</div>
-            </div>
              <p className="text-xs text-muted-foreground col-span-4">
-                Note: Full backend integration for OpenRouter, HuggingFace, Llamafile, and dynamic API key use in Genkit plugins is required for these settings to be fully functional.
+                The OpenRouter & HuggingFace keys are passed to the AI for context. Actual use requires backend Genkit plugin configuration with keys from environment variables.
               </p>
           </div>
           
@@ -500,6 +503,15 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
               <p className="text-primary/90 flex items-center mb-1"><AlertTriangle size={16} className="mr-2 text-primary" /> HuggingFace Note</p>
               <p className="text-xs text-muted-foreground">
                 Enter the specific HuggingFace model ID (e.g., <code>mistralai/Mistral-7B-Instruct-v0.1</code>). An API token may be required for certain models.
+                Ensure backend Genkit plugin is configured with HF_API_TOKEN from your <code>.env</code> file.
+              </p>
+             </div>
+            )}
+             {(settings.mainApiModel === 'openrouter' || (settings.useCustomReasoningModel && settings.reasoningApiModel === 'openrouter') || (settings.useCustomCodingModel && settings.codingApiModel === 'openrouter')) && (
+             <div className="col-span-4 mt-2 p-3 border border-dashed border-primary/50 rounded-md bg-muted/20">
+              <p className="text-primary/90 flex items-center mb-1"><AlertTriangle size={16} className="mr-2 text-primary" /> OpenRouter Note</p>
+              <p className="text-xs text-muted-foreground">
+                Ensure backend Genkit plugin for OpenRouter is configured with OPENROUTER_API_KEY from your <code>.env</code> file.
               </p>
              </div>
             )}
@@ -512,3 +524,5 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
     </Dialog>
   );
 }
+
+    
