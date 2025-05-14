@@ -19,7 +19,7 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
   if (!output) {
     return (
       <Window title="AI Merge Output" icon={<Code size={18} />} className="min-h-[400px] flex flex-col">
-        <div className="flex flex-col items-center justify-center h-full text-center p-4">
+        <div className="flex flex-col items-center justify-center h-full text-center p-4 animate-fade-in">
           <PackageSearch size={48} className="text-primary/70 mb-4" />
           <h3 className="text-lg font-semibold text-primary mb-2">Awaiting Merge Results</h3>
           <p className="text-sm text-muted-foreground">
@@ -52,13 +52,13 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
           <TabsTrigger value="code" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Merged Code</TabsTrigger>
           <TabsTrigger value="summary" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Summary</TabsTrigger>
         </TabsList>
-        <TabsContent value="code" className="flex-grow mt-0 overflow-hidden relative data-[state=inactive]:hidden">
+        <TabsContent value="code" className="flex-grow mt-0 overflow-hidden relative data-[state=active]:animate-fade-in data-[state=inactive]:hidden">
           <Button onClick={handleCopyCode} size="sm" variant="outline" className="absolute top-2 right-2 z-10 border-primary text-primary hover:bg-primary/10">Copy Code</Button>
           <ScrollArea className="h-full w-full p-1 bg-input rounded-sm">
             <pre className="text-xs whitespace-pre-wrap p-2">{output.mergedCodebase}</pre>
           </ScrollArea>
         </TabsContent>
-        <TabsContent value="summary" className="flex-grow mt-0 overflow-hidden relative data-[state=inactive]:hidden">
+        <TabsContent value="summary" className="flex-grow mt-0 overflow-hidden relative data-[state=active]:animate-fade-in data-[state=inactive]:hidden">
           <Button onClick={handleCopySummary} size="sm" variant="outline" className="absolute top-2 right-2 z-10 border-primary text-primary hover:bg-primary/10">Copy Summary</Button>
           <ScrollArea className="h-full w-full p-1 bg-input rounded-sm">
             <div className="p-4">

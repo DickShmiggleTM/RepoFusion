@@ -43,9 +43,9 @@ body {
     --chart-4: 170 50% 30%;
     --chart-5: 190 40% 20%;
 
-    --radius: 0.1rem; /* Blockier feel */
-    --radius-md: 0.2rem;
-    --radius-lg: 0.3rem;
+    --radius-sm: 0.2rem; /* Adjusted for more distinct blocky feel */
+    --radius-md: 0.4rem;
+    --radius-lg: 0.6rem;
 
 
     /* Sidebar specific colors - adjust if sidebar is used, maintaining the 90s theme */
@@ -99,6 +99,10 @@ body {
     scrollbar-color: hsl(var(--primary)) hsl(var(--muted));
   }
 
+  /* Improved focus visible styles globally */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-offset-2 ring-ring ring-offset-background;
+  }
 }
 
 @layer utilities {

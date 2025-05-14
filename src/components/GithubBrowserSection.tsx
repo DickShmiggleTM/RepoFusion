@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 interface GitHubRepo {
   name: string;
@@ -81,7 +82,7 @@ export function GithubBrowserSection() {
 
     setIsLoading(true);
     setError(null);
-    setRepoData(null); // Clear previous data for skeleton loader
+    setRepoData(null); 
 
     try {
       const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`);
@@ -98,7 +99,6 @@ export function GithubBrowserSection() {
     } catch (err) {
       const errorMessage = (err as Error).message;
       setError(errorMessage);
-      // Toast is now shown only for non-404 errors, as 404 is handled inline
       if (!errorMessage.includes("not found") && !errorMessage.includes("rate limit")) {
         toast({ title: "Error Fetching Repository", description: errorMessage, variant: "destructive" });
       }
@@ -111,7 +111,7 @@ export function GithubBrowserSection() {
     if (!repoUrl) {
       setRepoData(null);
       setError(null);
-      setIsLoading(false); // Ensure loading is false if URL is cleared
+      setIsLoading(false); 
       return;
     }
     const handler = setTimeout(() => {
@@ -122,10 +122,9 @@ export function GithubBrowserSection() {
       clearTimeout(handler);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repoUrl]); // Only re-run when repoUrl changes
+  }, [repoUrl]); 
 
   const handleLoadButtonClick = () => {
-    // Trigger fetch immediately on button click if URL is present
     if (repoUrl) {
       fetchRepoData(repoUrl);
     }
@@ -172,7 +171,10 @@ export function GithubBrowserSection() {
         {isLoading && <RepoCardSkeleton />}
 
         {!isLoading && repoData && (
-          <Card className="bg-card/50 border-primary/30">
+          <Card className={cn(
+            "bg-card/50 border-primary/30 animate-fade-in-up",
+            "hover:border-primary/70 hover:shadow-md transition-all duration-200"
+            )}>
             <CardHeader>
               <div className="flex items-center space-x-3">
                 <Image 
@@ -213,7 +215,7 @@ export function GithubBrowserSection() {
         )}
         
         {!isLoading && !repoData && !error && !repoUrl && (
-           <div className="text-center text-muted-foreground pt-8">
+           <div className="text-center text-muted-foreground pt-8 animate-fade-in">
             <Github size={32} className="mx-auto mb-2 opacity-50" />
             <p>Enter a GitHub repository URL above to view its details.</p>
           </div>

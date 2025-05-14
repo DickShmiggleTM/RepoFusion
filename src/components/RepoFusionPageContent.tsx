@@ -37,7 +37,7 @@ export default function RepoFusionPageContent() {
 
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col space-y-6 bg-background text-foreground">
-      <header className="text-center space-y-2 relative pt-4 md:pt-0">
+      <header className="text-center space-y-2 relative pt-4 md:pt-0 animate-fade-in">
         <div className="inline-flex items-center justify-center">
           <Zap size={48} className="text-primary animate-pulse" />
           <h1 className="text-4xl md:text-5xl font-bold text-primary ml-3">
@@ -59,7 +59,7 @@ export default function RepoFusionPageContent() {
         </Button>
       </header>
 
-      <main className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow">
+      <main className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow animate-fade-in animation-delay-[100ms]">
         <div className="lg:col-span-1 flex flex-col space-y-6">
           <RepoInputForm onMergeSuccess={handleMergeSuccess} appSettings={appSettings} />
         </div>
@@ -71,7 +71,7 @@ export default function RepoFusionPageContent() {
 
       <footer className="text-center text-xs text-muted-foreground/70 py-6 mt-auto border-t border-border">
         <p>&copy; {new Date().getFullYear()} RepoFusion. Powered by AI and Retro Vibes.</p>
-        <p>Press <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded bg-muted text-foreground">Ctrl/Cmd</kbd> + <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded bg-muted text-foreground">B</kbd> for potential sidebar (if applicable in future).</p>
+        <p>Press <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded-sm bg-muted text-foreground">Ctrl/Cmd</kbd> + <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded-sm bg-muted text-foreground">B</kbd> for potential sidebar (if applicable in future).</p>
       </footer>
 
       <SettingsDialog
@@ -83,3 +83,13 @@ export default function RepoFusionPageContent() {
     </div>
   );
 }
+
+// Helper for animation delay if needed, or use tailwind-animate plugin for more complex delays
+// <style jsx global>{`
+//   .animation-delay-\[100ms\] { animation-delay: 100ms; }
+// `}</style>
+// This can be done directly in tailwind.config.js if preferred.
+// For simplicity, direct animate-fade-in is used. If fine-grained delays are needed,
+// it would require adding them to tailwind config or using a library.
+// The current setup provides a basic fade-in.
+
