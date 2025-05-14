@@ -2,8 +2,8 @@
 "use client";
 
 import type { IntelligentMergeOutput } from '@/ai/flows/intelligent-merge';
-import { useState } from 'react';
-import { RepoInputForm } from '@/components/RepoInputForm';
+import { useState, useRef } from 'react';
+import { RepoInputForm, type RepoInputFormHandle } from '@/components/RepoInputForm';
 import { MergeOutputDisplay } from '@/components/MergeOutputDisplay';
 import { GithubBrowserSection } from '@/components/GithubBrowserSection';
 import { SettingsDialog } from '@/components/SettingsDialog';
@@ -11,11 +11,13 @@ import { Button } from '@/components/ui/button';
 import type { AppSettings } from '@/types/settings';
 import { defaultAppSettings } from '@/types/settings';
 import { Zap, Cog } from 'lucide-react';
+import { RepoRecommendationSection } from '@/components/RepoRecommendationSection';
 
 export default function RepoFusionPageContent() {
   const [mergeOutput, setMergeOutput] = useState<IntelligentMergeOutput | null>(null);
   const [isSettingsDialogOpen, setIsSettingsDialogOpen] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings>(defaultAppSettings);
+  const repoInputFormRef = useRef<RepoInputFormHandle>(null);
 
   const handleMergeSuccess = (output: IntelligentMergeOutput) => {
     setMergeOutput(output);
@@ -23,17 +25,11 @@ export default function RepoFusionPageContent() {
 
   const handleSaveSettings = (newSettings: AppSettings) => {
     setAppSettings(newSettings);
-    // Potentially save to localStorage here if persistence is needed across sessions
-    // localStorage.setItem('repoFusionSettings', JSON.stringify(newSettings));
   };
 
-  // useEffect(() => {
-  //   // Load settings from localStorage on initial mount if needed
-  //   const savedSettings = localStorage.getItem('repoFusionSettings');
-  //   if (savedSettings) {
-  //     setAppSettings(JSON.parse(savedSettings));
-  //   }
-  // }, []);
+  const handleAddRecommendedReposToForm = (urls: string[]) => {
+    repoInputFormRef.current?.addRepositoryUrls(urls);
+  };
 
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col space-y-6 bg-background text-foreground">
@@ -45,33 +41,36 @@ export default function RepoFusionPageContent() {
           </h1>
         </div>
         <p className="text-sm md:text-md text-muted-foreground max-w-2xl mx-auto">
-          Intelligently merge multiple GitHub repositories into a single, functional application using AI.
+          Intelligently merge multiple GitHub repositories using AI. Get recommendations or browse GitHub directly.
           Experience it all in a nostalgic 90's OS dark mode interface.
         </p>
         <Button
           variant="outline"
           size="icon"
           onClick={() => setIsSettingsDialogOpen(true)}
-          className="absolute top-0 right-0 m-1 md:m-0 text-primary border-primary hover:bg-primary/10 hover:text-primary"
+          className="absolute top-0 right-0 m-1 md:m-0 text-primary border-primary hover:bg-primary/10 hover:text-primary active:scale-[0.98]"
           aria-label="Open Settings"
         >
           <Cog size={20} />
         </Button>
       </header>
 
-      <main className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-grow animate-fade-in animation-delay-[100ms]">
+      <main className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow animate-fade-in animation-delay-[100ms]">
         <div className="lg:col-span-1 flex flex-col space-y-6">
-          <RepoInputForm onMergeSuccess={handleMergeSuccess} appSettings={appSettings} />
+          <RepoInputForm ref={repoInputFormRef} onMergeSuccess={handleMergeSuccess} appSettings={appSettings} />
         </div>
         <div className="lg:col-span-1 flex flex-col space-y-6">
           <MergeOutputDisplay output={mergeOutput} />
+          <RepoRecommendationSection appSettings={appSettings} onAddRecommendedReposToForm={handleAddRecommendedReposToForm} />
+        </div>
+        <div className="lg:col-span-1 flex flex-col space-y-6">
           <GithubBrowserSection />
         </div>
       </main>
 
       <footer className="text-center text-xs text-muted-foreground/70 py-6 mt-auto border-t border-border">
         <p>&copy; {new Date().getFullYear()} RepoFusion. Powered by AI and Retro Vibes.</p>
-        <p>Press <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded-sm bg-muted text-foreground">Ctrl/Cmd</kbd> + <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded-sm bg-muted text-foreground">B</kbd> for potential sidebar (if applicable in future).</p>
+         <p>Press <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded-sm bg-muted text-foreground">Ctrl/Cmd</kbd> + <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded-sm bg-muted text-foreground">B</kbd> for potential sidebar (if applicable in future).</p>
       </footer>
 
       <SettingsDialog
@@ -83,13 +82,3 @@ export default function RepoFusionPageContent() {
     </div>
   );
 }
-
-// Helper for animation delay if needed, or use tailwind-animate plugin for more complex delays
-// <style jsx global>{`
-//   .animation-delay-\[100ms\] { animation-delay: 100ms; }
-// `}</style>
-// This can be done directly in tailwind.config.js if preferred.
-// For simplicity, direct animate-fade-in is used. If fine-grained delays are needed,
-// it would require adding them to tailwind config or using a library.
-// The current setup provides a basic fade-in.
-
