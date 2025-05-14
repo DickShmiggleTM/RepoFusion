@@ -55,12 +55,13 @@ const IntelligentMergeInputSchema = z.object({
 });
 export type IntelligentMergeInput = z.infer<typeof IntelligentMergeInputSchema>;
 
+const FileSchema = z.object({
+  path: z.string().describe('The full path of the file, including directories and extension (e.g., src/utils/helpers.ts).'),
+  content: z.string().describe('The complete content of the file.'),
+});
+
 const IntelligentMergeOutputSchema = z.object({
-  mergedCodebase: z
-    .string()
-    .describe(
-      'A textual representation of the merged codebase structure, key integrated snippets, or a high-level conceptual overview suitable for a prototype. This is not expected to be a directly compilable/runnable complete codebase.'
-    ),
+  files: z.array(FileSchema).describe('An array of file objects representing the conceptually merged codebase. Focus on key files and structure. Provide a reasonable number of files for a prototype (e.g., 5-10 critical files).'),
   summary: z
     .string()
     .describe(
@@ -77,7 +78,7 @@ const prompt = ai.definePrompt({
   name: 'intelligentMergePrompt',
   input: {schema: IntelligentMergeInputSchema},
   output: {schema: IntelligentMergeOutputSchema},
-  prompt: `You are an expert software engineer specializing in conceptualizing and planning the merger of codebases from multiple GitHub repositories. Your goal is to act as an AI consultant providing a detailed plan and conceptual output for a prototype.
+  prompt: `You are an expert software engineer specializing in conceptualizing and planning the merger of codebases from multiple GitHub repositories. Your goal is to act as an AI consultant providing a detailed plan and a multi-file conceptual prototype.
 
 You will analyze the potential integration of the codebases from the following repositories:
 Repositories:
@@ -123,13 +124,16 @@ API Keys Provided by User (for context only):
 - HuggingFace Key: {{#if huggingfaceApiKey}}Yes{{else}}No{{/if}}
 
 Task:
-Your goal is to provide a conceptual plan and representative output for merging the specified repositories.
+Your goal is to provide a conceptual plan and a multi-file prototype for merging the specified repositories.
 
-For the "mergedCodebase" output field (this should be a single string containing the textual representation):
-1.  Provide a high-level overview of the proposed file/directory structure for the merged project (e.g., using ASCII tree format or clear descriptions).
-2.  Include key example code snippets (text) demonstrating how critical functionalities from different repositories might be integrated. Focus on one or two important integration points.
-3.  If there are UI components, describe their conceptual integration.
-4.  This output should be a textual representation suitable for a prototype. It is NOT expected to be a complete, directly runnable, or fully functional codebase.
+For the "files" output field (this should be an array of file objects):
+1.  Propose a sensible file and directory structure for the merged project.
+2.  Generate a representative set of key files (e.g., 5-10 critical files) for this structure. For each file, provide:
+    a.  A 'path' (e.g., "src/components/MyComponent.tsx", "server/api/routes.js", "README.md").
+    b.  'content' (the actual textual code or content for that file).
+3.  The content of these files should demonstrate how critical functionalities from different repositories might be integrated or how new shared components might look.
+4.  If there are UI components, describe their conceptual integration through file content.
+5.  This output is for a prototype. It is NOT expected to be a complete, directly runnable, or fully functional codebase but should provide a strong conceptual and structural foundation.
 
 For the "summary" output field:
 1.  Provide a comprehensive summary of your conceptual merging process.
@@ -140,7 +144,8 @@ For the "summary" output field:
 6.  Outline the main steps involved in this conceptual merge.
 7.  Explain the rationale behind your proposed merged structure and integration choices.
 
-Ensure your entire response strictly adheres to the JSON schema for the output, providing content for both 'mergedCodebase' and 'summary' fields.
+Ensure your entire response strictly adheres to the JSON schema for the output, providing content for both 'files' and 'summary' fields.
+The 'files' array should not be empty if a merge is deemed possible.
 `,
 });
 
@@ -151,19 +156,21 @@ const intelligentMergeFlow = ai.defineFlow(
     outputSchema: IntelligentMergeOutputSchema,
   },
   async input => {
-    // The current Genkit setup uses a globally configured AI model (from src/ai/genkit.ts).
-    // The detailed model configuration and API keys from the input are passed to the AI
-    // for contextual awareness, as instructed in the prompt.
-    // Future enhancements could involve dynamically selecting and configuring Genkit plugins
-    // or tools based on these inputs, which would be a significant backend change.
     const {output} = await prompt(input);
     if (!output) {
       throw new Error('The AI model did not return a valid output. Please try again.');
     }
-    if (typeof output.mergedCodebase !== 'string' || typeof output.summary !== 'string') {
-        throw new Error('The AI model returned an invalid data structure. Expected string for mergedCodebase and summary.');
+    if (!Array.isArray(output.files) || typeof output.summary !== 'string') {
+        throw new Error('The AI model returned an invalid data structure. Expected an array for "files" and a string for "summary".');
+    }
+    // Basic validation for file objects, can be expanded
+    if (output.files.length > 0) {
+      for (const file of output.files) {
+        if (typeof file.path !== 'string' || typeof file.content !== 'string') {
+          throw new Error('Invalid file object structure in AI output. Each file must have a string "path" and "content".');
+        }
+      }
     }
     return output;
   }
 );
-
