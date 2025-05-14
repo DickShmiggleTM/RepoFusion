@@ -73,7 +73,7 @@ Current Model Configuration (for your context, not for you to change):
 
 Recommendation Mode: {{{mode}}}
 
-{{#if (eq mode "promptBased") }}
+{{#if promptDescription}}
 User's Project Description/Goal:
 "{{{promptDescription}}}"
 Based on this description, please recommend 5 GitHub repositories that would be relevant, potentially compatible for merging, or offer diverse functionalities related to the prompt. For each repository, provide its name, full URL, and a brief reason for your recommendation.
