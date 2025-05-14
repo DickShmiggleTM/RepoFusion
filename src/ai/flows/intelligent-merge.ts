@@ -91,14 +91,14 @@ Your task is to generate a conceptual multi-file prototype and a summary. The us
 
 User's Preferred AI Toolchain Configuration:
 - Main Generation Model Type: {{{mainApiModel}}}
-{{#if ollamaMainModelName}}  - Ollama Main Model: {{{ollamaMainModelName}}}{{/if}}
+{{#if ollamaMainModelName}}  - Ollama Main Model: {{{ollamaMainModelName}}} (Base name: {{{ollamaMainModelName}}}){{/if}}
 {{#if geminiMainModelName}}  - Gemini Main Model: {{{geminiMainModelName}}}{{/if}}
 {{#if openrouterMainModelName}}  - OpenRouter Main Model: {{{openrouterMainModelName}}}{{/if}}
 {{#if huggingfaceMainModelName}}  - HuggingFace Main Model: {{{huggingfaceMainModelName}}}{{/if}}
 
 {{#if useCustomReasoningModel}}
 - Reasoning Model Type: {{{reasoningApiModel}}}
-{{#if ollamaReasoningModelName}}  - Ollama Reasoning Model: {{{ollamaReasoningModelName}}}{{/if}}
+{{#if ollamaReasoningModelName}}  - Ollama Reasoning Model: {{{ollamaReasoningModelName}}} (Base name: {{{ollamaReasoningModelName}}}){{/if}}
 {{#if geminiReasoningModelName}}  - Gemini Reasoning Model: {{{geminiReasoningModelName}}}{{/if}}
 {{#if openrouterReasoningModelName}}  - OpenRouter Reasoning Model: {{{openrouterReasoningModelName}}}{{/if}}
 {{#if huggingfaceReasoningModelName}}  - HuggingFace Reasoning Model: {{{huggingfaceReasoningModelName}}}{{/if}}
@@ -108,7 +108,7 @@ User's Preferred AI Toolchain Configuration:
 
 {{#if useCustomCodingModel}}
 - Coding Model Type: {{{codingApiModel}}}
-{{#if ollamaCodingModelName}}  - Ollama Coding Model: {{{ollamaCodingModelName}}}{{/if}}
+{{#if ollamaCodingModelName}}  - Ollama Coding Model: {{{ollamaCodingModelName}}} (Base name: {{{ollamaCodingModelName}}}){{/if}}
 {{#if geminiCodingModelName}}  - Gemini Coding Model: {{{geminiCodingModelName}}}{{/if}}
 {{#if openrouterCodingModelName}}  - OpenRouter Coding Model: {{{openrouterCodingModelName}}}{{/if}}
 {{#if huggingfaceCodingModelName}}  - HuggingFace Coding Model: {{{huggingfaceCodingModelName}}}{{/if}}
@@ -161,30 +161,28 @@ const intelligentMergeFlow = globalAi.defineFlow(
     let modelToUse: ModelArgument | undefined = undefined;
 
     if (input.mainApiModel === 'gemini' && input.geminiApiKey && input.geminiMainModelName) {
-      console.log(`Using user-provided Gemini API key for model: ${input.geminiMainModelName}`);
+      console.log(`IntelligentMerge: Using user-provided Gemini API key for model: ${input.geminiMainModelName}`);
       const geminiPluginWithKey = googleAI({ apiKey: input.geminiApiKey });
       currentAi = genkit({ plugins: [geminiPluginWithKey],
-        // Ensure some log level, as it might default to none otherwise in temp instance
         logLevel: 'warn', 
-        // This flowId can help in tracing if needed
         flowId: 'intelligentMergeFlow-gemini-customKey' 
       }); 
-      configuredPrompt = defineIntelligentMergePrompt(currentAi); // Re-define prompt with this AI instance
+      configuredPrompt = defineIntelligentMergePrompt(currentAi); 
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'ollama' && input.ollamaMainModelName) {
-      modelToUse = `ollama/${input.ollamaMainModelName}`;
-      console.warn("Ollama model selected. Ensure Genkit is configured with an Ollama plugin for this to work.");
+      const baseOllamaModelName = input.ollamaMainModelName.split(':')[0];
+      modelToUse = `ollama/${baseOllamaModelName}`;
+      console.warn(`IntelligentMerge: Ollama model selected: ${input.ollamaMainModelName}. Using base name for Genkit: ${baseOllamaModelName}. Ensure Genkit is configured with an Ollama plugin.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
-      console.warn("OpenRouter model selected. Ensure Genkit is configured with an OpenRouter plugin for this to work.");
+      console.warn("IntelligentMerge: OpenRouter model selected. Ensure Genkit is configured with an OpenRouter plugin for this to work.");
     } else if (input.mainApiModel === 'huggingface' && input.huggingfaceMainModelName) {
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
-      console.warn("HuggingFace model selected. Ensure Genkit is configured with a HuggingFace plugin for this to work.");
+      console.warn("IntelligentMerge: HuggingFace model selected. Ensure Genkit is configured with a HuggingFace plugin for this to work.");
     } else if (input.mainApiModel === 'llamafile') {
-      console.warn("Llamafile selected as main model. Direct generation with Llamafile as the primary model via 'model' parameter is not standard. Using default model for generation. Llamafile path is available in prompt context.");
-      // modelToUse will remain undefined, relying on prompt's default or global default
+      console.warn("IntelligentMerge: Llamafile selected as main model. Using default model for generation. Llamafile path is available in prompt context.");
     }
 
     const {output} = await configuredPrompt(input, modelToUse ? { model: modelToUse } : undefined);
@@ -209,3 +207,4 @@ const intelligentMergeFlow = globalAi.defineFlow(
 export async function intelligentMerge(input: IntelligentMergeInput): Promise<IntelligentMergeOutput> {
   return intelligentMergeFlow(input);
 }
+

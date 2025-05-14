@@ -28,8 +28,6 @@ const RecommendReposInputSchema = z.object({
   openrouterApiKey: z.string().optional(),
   huggingfaceApiKey: z.string().optional(),
 
-  // Reasoning and Coding models are not strictly needed for this flow but are part of AppSettings
-  // These are included for consistency with AppSettings and if the prompt needs to be aware of them.
   useCustomReasoningModel: z.boolean().optional(),
   reasoningApiModel: z.enum(['gemini', 'openrouter', 'huggingface', 'llamafile', 'ollama']).optional(),
   ollamaReasoningModelName: z.string().optional(),
@@ -47,7 +45,7 @@ export type RecommendReposInput = z.infer<typeof RecommendReposInputSchema>;
 
 const RecommendedRepoSchema = z.object({
   name: z.string().describe('The name of the GitHub repository.'),
-  url: z.string().describe('The full URL of the GitHub repository.'),
+  url: z.string().describe('The full URL of the GitHub repository.'), // No .url() refinement here
   reason: z.string().describe('A brief explanation why this repository is recommended.'),
 });
 
@@ -64,7 +62,7 @@ const defineRecommendReposPrompt = (aiInstance: typeof globalAi) => aiInstance.d
 
 Current Model Configuration (for your context, this is the main model you are currently using):
 - Main Model Type: {{{mainApiModel}}}
-{{#if ollamaMainModelName}}- Ollama Model: {{{ollamaMainModelName}}}{{/if}}
+{{#if ollamaMainModelName}}- Ollama Model: {{{ollamaMainModelName}}} (Base name: {{{ollamaMainModelName}}}){{/if}}
 {{#if geminiMainModelName}}- Gemini Model: {{{geminiMainModelName}}}{{/if}}
 {{#if openrouterMainModelName}}- OpenRouter Model: {{{openrouterMainModelName}}}{{/if}}
 {{#if huggingfaceMainModelName}}- HuggingFace Model: {{{huggingfaceMainModelName}}}{{/if}}
@@ -105,8 +103,9 @@ const recommendReposFlow = globalAi.defineFlow(
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'ollama' && input.ollamaMainModelName) {
-      modelToUse = `ollama/${input.ollamaMainModelName}`;
-      console.warn("RecommendRepos: Ollama model selected. Ensure Genkit is configured with an Ollama plugin.");
+      const baseOllamaModelName = input.ollamaMainModelName.split(':')[0];
+      modelToUse = `ollama/${baseOllamaModelName}`;
+      console.warn(`RecommendRepos: Ollama model selected: ${input.ollamaMainModelName}. Using base name for Genkit: ${baseOllamaModelName}. Ensure Genkit is configured with an Ollama plugin.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
       console.warn("RecommendRepos: OpenRouter model selected. Ensure Genkit is configured with an OpenRouter plugin.");
@@ -122,12 +121,10 @@ const recommendReposFlow = globalAi.defineFlow(
     if (!output || !output.recommendations || output.recommendations.length !== 5) {
       throw new Error('AI did not return 5 valid recommendations.');
     }
-    // Basic validation for recommended repo structure
     for (const repo of output.recommendations) {
         if (typeof repo.name !== 'string' || typeof repo.url !== 'string' || typeof repo.reason !== 'string') {
             throw new Error('Invalid repository object structure in AI output. Each repo must have name, url, and reason as strings.');
         }
-         // A very basic check for URL structure, can be improved
         if (!repo.url.startsWith('http://') && !repo.url.startsWith('https://')) {
             throw new Error(`Invalid URL format for repository "${repo.name}": ${repo.url}`);
         }
@@ -139,3 +136,4 @@ const recommendReposFlow = globalAi.defineFlow(
 export async function recommendRepos(input: RecommendReposInput): Promise<RecommendReposOutput> {
   return recommendReposFlow(input);
 }
+
