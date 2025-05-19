@@ -6,7 +6,7 @@ import { Code, FileText, PackageSearch, DownloadCloud, FileCode, ChevronRight, C
 import { Window } from '@/components/Window';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver'; 
@@ -184,4 +184,3 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
     </Window>
   );
 }
-

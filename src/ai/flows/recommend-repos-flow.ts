@@ -8,7 +8,7 @@
  * - RecommendReposOutput - The return type for the recommendRepos function.
  */
 
-import {ai as globalAi} from '@/ai/genkit';
+import ai from '@/hooks/useGenkit';
 import {genkit, type ModelArgument, type PluginProvider} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
@@ -55,7 +55,7 @@ const RecommendReposOutputSchema = z.object({
 });
 export type RecommendReposOutput = z.infer<typeof RecommendReposOutputSchema>;
 
-const defineRecommendReposPrompt = (aiInstance: typeof globalAi | ReturnType<typeof genkit>) => aiInstance.definePrompt({
+const defineRecommendReposPrompt = (aiInstance: typeof ai | ReturnType<typeof genkit>) => aiInstance.definePrompt({
   name: 'recommendReposPrompt',
   input: {schema: RecommendReposInputSchema}, 
   output: {schema: RecommendReposOutputSchema},
@@ -88,14 +88,14 @@ Adhere strictly to the JSON output schema.
 });
 
 
-const recommendReposFlow = globalAi.defineFlow(
+const recommendReposFlow = ai.defineFlow(
   {
     name: 'recommendReposFlow',
     inputSchema: RecommendReposInputSchema,
     outputSchema: RecommendReposOutputSchema,
   },
   async (input) => {
-    let currentAi: typeof globalAi | ReturnType<typeof genkit> = globalAi;
+    let currentAi: typeof ai | ReturnType<typeof genkit> = ai;
     let configuredPrompt = defineRecommendReposPrompt(currentAi);
     let modelToUse: ModelArgument | undefined = undefined;
     
@@ -115,7 +115,7 @@ const recommendReposFlow = globalAi.defineFlow(
         modelToUse = `googleai/${input.geminiMainModelName}`;
       } catch (e) {
         console.error("RecommendRepos: Failed to initialize temporary Genkit instance with user's Gemini key. Falling back to global Genkit instance.", e);
-        currentAi = globalAi; 
+        currentAi = ai; 
         configuredPrompt = defineRecommendReposPrompt(currentAi);
         modelToUse = `googleai/${input.geminiMainModelName}`;
       }
@@ -125,16 +125,22 @@ const recommendReposFlow = globalAi.defineFlow(
       const baseModelName = input.ollamaMainModelName.includes(':') ? input.ollamaMainModelName.split(':')[0] : input.ollamaMainModelName;
       promptInput.ollamaBaseMainModelName = baseModelName; // For display in prompt
       modelToUse = `ollama/${baseModelName}`; // For Genkit call
-      console.warn(`RecommendRepos: Ollama model selected: '${input.ollamaMainModelName}'. Using base name for Genkit: '${baseModelName}'.\nIMPORTANT: Ensure Genkit is configured with an Ollama plugin (see src/ai/genkit.ts) and the model '${baseModelName}' (or the full name including tag) is available locally and accessible by the plugin.`);
+      console.warn(`RecommendRepos: Ollama model selected: '${input.ollamaMainModelName}'. Using base name for Genkit: '${baseModelName}'.
+IMPORTANT: Ensure Genkit is configured with an Ollama plugin (see src/ai/genkit.ts) and the model '${baseModelName}' (or the full name including tag) is available locally and accessible by the plugin.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
-      console.warn(`RecommendRepos: OpenRouter model selected: '${input.openrouterMainModelName}'.\nIMPORTANT: Ensure Genkit is configured with an OpenRouter plugin and your OPENROUTER_API_KEY is set in .env (see src/ai/genkit.ts) for this to work.`);
+      console.warn(`RecommendRepos: OpenRouter model selected: '${input.openrouterMainModelName}'.
+IMPORTANT: Ensure Genkit is configured with an OpenRouter plugin and your OPENROUTER_API_KEY is set in .env (see src/ai/genkit.ts) for this to work.`);
     } else if (input.mainApiModel === 'huggingface' && input.huggingfaceMainModelName) {
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
-      console.warn(`RecommendRepos: HuggingFace model selected: '${input.huggingfaceMainModelName}'.\nIMPORTANT: Ensure Genkit is configured with a HuggingFace plugin and your HF_API_TOKEN is set in .env (see src/ai/genkit.ts) for this to work.`);
+      console.warn(`RecommendRepos: HuggingFace model selected: '${input.huggingfaceMainModelName}'.
+IMPORTANT: Ensure Genkit is configured with a HuggingFace plugin and your HF_API_TOKEN is set in .env (see src/ai/genkit.ts) for this to work.`);
     } else if (input.mainApiModel === 'llamafile') {
       modelToUse = undefined; // Llamafile usually relies on default plugin config
-      console.warn(`RecommendRepos: Llamafile selected as main model. Using default configured Llamafile model (if Llamafile plugin is active in src/ai/genkit.ts).\nIMPORTANT: Ensure Llamafile is running and Genkit is configured with a Llamafile plugin. Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in prompt context.`);
+      console.warn(`RecommendRepos: Llamafile selected as main model. Using default configured Llamafile model (if Llamafile plugin is active in src/ai/genkit.ts).
+IMPORTANT: Ensure Llamafile is running and Genkit is configured with a Llamafile plugin. Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in prompt context.`);
+    } else {
+        console.warn("RecommendRepos: No main model selected. Ensure Genkit is configured with a default model (see src/ai/genkit.ts).");
     }
     
     const {output} = await configuredPrompt(promptInput, modelToUse ? { model: modelToUse } : undefined);

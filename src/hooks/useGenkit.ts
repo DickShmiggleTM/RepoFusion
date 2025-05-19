@@ -35,7 +35,7 @@ config(); // Load environment variables from .env
 // --- Google AI Plugin (Default) ---
 const googleAIPlugin = googleAI({
   // The API key can be set here globally, or flows can pass it dynamically.
-  // apiKey: process.env.GOOGLE_API_KEY 
+  // apiKey: process.env.GOOGLE_API_KEY
 });
 
 // --- OpenRouter Plugin ---
@@ -126,17 +126,19 @@ if (ollamaProvider) {
 
 console.log("Genkit: Initialized with active plugins:", activePlugins.map(p => p.name).join(', '));
 
-export const ai = genkit({
+const ai = genkit({
   plugins: activePlugins,
   // Default model used if a flow doesn't specify one or if the specified model's provider isn't configured.
   // It's good to have a reliable default.
-  model: 'googleai/gemini-1.5-flash-latest', 
+  model: 'googleai/gemini-1.5-flash-latest',
   // It's generally better to configure log level via CLI (`genkit start --log-level debug`)
   // or environment variables, but can be set here for development.
-  // logLevel: 'debug', 
+  // logLevel: 'debug',
   // flowStateStore: 'firebase', // Example if using Firebase for flow state persistence
   // traceStore: 'firebase', // Example if using Firebase for trace persistence
 });
+
+export default ai;
 
 // Example of how to list available models from configured providers:
 // (This is for testing/debugging in dev.ts or similar, not typically run in genkit.ts directly)
@@ -154,4 +156,3 @@ async function listModels() {
 }
 // listModels();
 */
-

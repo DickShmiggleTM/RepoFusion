@@ -86,11 +86,11 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
         currentErrorTitle = `${flowInput.mainApiModel.charAt(0).toUpperCase() + flowInput.mainApiModel.slice(1)} Model Not Found`;
         let specificAdvice = "Please ensure the model ID is correct and accessible.";
         if (flowInput.mainApiModel === 'openrouter') {
-          specificAdvice = "Ensure the OpenRouter Genkit plugin is correctly configured in src/ai/genkit.ts and your OPENROUTER_API_KEY in .env is valid and has access to the model.";
+          specificAdvice = "Ensure the OpenRouter Genkit plugin is correctly configured in src/hooks/useGenkit.ts and your OPENROUTER_API_KEY in .env is valid and has access to the model.";
         } else if (flowInput.mainApiModel === 'huggingface') {
-          specificAdvice = "Ensure the HuggingFace Genkit plugin is configured in src/ai/genkit.ts, your HF_API_TOKEN in .env is valid, and the model ID is correct.";
+          specificAdvice = "Ensure the HuggingFace Genkit plugin is configured in src/hooks/useGenkit.ts, your HF_API_TOKEN in .env is valid, and the model ID is correct.";
         } else if (flowInput.mainApiModel === 'ollama') {
-          specificAdvice = "Ensure your Ollama server is running, the specified model is pulled (e.g., 'ollama pull modelname'), and the Ollama Genkit plugin (if used) is configured in src/ai/genkit.ts.";
+          specificAdvice = "Ensure your Ollama server is running, the specified model is pulled (e.g., 'ollama pull modelname'), and the Ollama Genkit plugin (if used) is configured in src/hooks/useGenkit.ts.";
         } else if (flowInput.mainApiModel === 'gemini') {
             specificAdvice = "Ensure your Gemini API key is valid, has access to the specified model, and the model name is correct (e.g., 'gemini-1.5-flash-latest').";
         }
@@ -228,4 +228,3 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
     </Window>
   );
 }
-
