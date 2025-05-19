@@ -71,7 +71,6 @@ const IntelligentMergeOutputSchema = z.object({
 });
 export type IntelligentMergeOutput = z.infer<typeof IntelligentMergeOutputSchema>;
 
-// This prompt definition is now a template function to allow dynamic AI instance
 const defineIntelligentMergePrompt = (aiInstance: typeof globalAi) => aiInstance.definePrompt({
   name: 'intelligentMergePrompt',
   input: {schema: IntelligentMergeInputSchema},
@@ -86,7 +85,7 @@ Target Language for Merged Project (if specified, otherwise infer or use primary
 
 User's Additional Instructions: {{#if instructions}}{{{instructions}}}{{else}}No additional instructions provided.{{/if}}
 
-User's Preferred AI Toolchain Configuration (for your contextual awareness only; perform the task using your current capabilities):
+User's Preferred AI Toolchain Configuration (This is for your contextual awareness. You will perform the task using your current model capabilities. The user is aware that Genkit backend plugins and API keys must be configured for non-Gemini models to be used for actual generation.):
 - Main Generation Model Type: {{{mainApiModel}}}
 {{#if ollamaMainModelName}}  - Ollama Main Model: {{{ollamaMainModelName}}} (Base name: {{ollamaMainModelName.split(':')[0]}}){{/if}}
 {{#if geminiMainModelName}}  - Gemini Main Model: {{{geminiMainModelName}}}{{/if}}
@@ -115,7 +114,7 @@ User's Preferred AI Toolchain Configuration (for your contextual awareness only;
 
 {{#if llamafilePath}}Llamafile Path (if Llamafile selected for any model): {{{llamafilePath}}}{{/if}}
 
-API Keys Provided by User (for context only, you will use your configured capabilities):
+API Keys Provided by User (for context only, you will use your configured capabilities. Gemini key might be used dynamically by the backend if 'gemini' is the mainApiModel.):
 - Gemini Key: {{#if geminiApiKey}}Provided{{else}}Not provided{{/if}}
 - OpenRouter Key: {{#if openrouterApiKey}}Provided{{else}}Not provided{{/if}}
 - HuggingFace Key: {{#if huggingfaceApiKey}}Provided{{else}}Not provided{{/if}}
@@ -183,61 +182,54 @@ const intelligentMergeFlow = globalAi.defineFlow(
         modelToUse = `googleai/${input.geminiMainModelName}`;
       } catch (e) {
         console.error("IntelligentMerge: Failed to initialize temporary Genkit instance with user's Gemini key.", e);
-        // Fallback to global Genkit instance and model if temporary instance fails
         currentAi = globalAi; 
         configuredPrompt = defineIntelligentMergePrompt(currentAi); 
-        // Still attempt to use the specified model name, but with the global API key
         modelToUse = `googleai/${input.geminiMainModelName}`; 
       }
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'ollama' && input.ollamaMainModelName) {
-      baseModelName = input.ollamaMainModelName.split(':')[0]; // Strip tag if present
+      baseModelName = input.ollamaMainModelName.split(':')[0]; 
       modelToUse = `ollama/${baseModelName}`;
-      console.warn(`IntelligentMerge: Ollama model selected: ${input.ollamaMainModelName}. Using base name for Genkit: ${baseModelName}. Ensure Genkit is configured with an Ollama plugin (see src/ai/genkit.ts) and the model is available locally.`);
+      console.warn(`IntelligentMerge: Ollama model selected: '${input.ollamaMainModelName}'. Attempting to use base name for Genkit: '${baseModelName}'.\nIMPORTANT: Ensure Genkit is configured with an Ollama plugin (see src/ai/genkit.ts) and the model '${baseModelName}' is available locally for this to work.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
-      console.warn("IntelligentMerge: OpenRouter model selected. Ensure Genkit is configured with an OpenRouter plugin and API key (see src/ai/genkit.ts) for this to work.");
+      console.warn(`IntelligentMerge: OpenRouter model selected: '${input.openrouterMainModelName}'.\nIMPORTANT: Ensure Genkit is configured with an OpenRouter plugin and your OPENROUTER_API_KEY is set in .env (see src/ai/genkit.ts) for this to work.`);
     } else if (input.mainApiModel === 'huggingface' && input.huggingfaceMainModelName) {
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
-      console.warn("IntelligentMerge: HuggingFace model selected. Ensure Genkit is configured with a HuggingFace plugin and API key (see src/ai/genkit.ts) for this to work.");
+      console.warn(`IntelligentMerge: HuggingFace model selected: '${input.huggingfaceMainModelName}'.\nIMPORTANT: Ensure Genkit is configured with a HuggingFace plugin and your HF_API_TOKEN is set in .env (see src/ai/genkit.ts) for this to work.`);
     } else if (input.mainApiModel === 'llamafile') {
-      // For Llamafile, it's often used without a specific model sub-identifier if Genkit is configured for a default Llamafile endpoint.
-      // The `llamafilePath` from input is primarily for contextual awareness in the prompt.
-      console.warn("IntelligentMerge: Llamafile selected as main model. Using default model for generation. Ensure Llamafile is running and accessible if Genkit is configured for it. Llamafile path is available in prompt context.");
-      // `modelToUse` might remain undefined, letting Genkit use its default or a Llamafile plugin's default.
+      console.warn(`IntelligentMerge: Llamafile selected as main model. Using default model for generation.\nIMPORTANT: Ensure Llamafile is running and accessible if Genkit is configured for it (see src/ai/genkit.ts). Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in prompt context but not directly used for model selection here.`);
     }
 
     const {output} = await configuredPrompt(input, modelToUse ? { model: modelToUse } : undefined);
     
-    // Robust output validation
     if (!output) {
       throw new Error('The AI model did not return a valid output. Please try again with a more specific prompt or check model availability.');
     }
     if (typeof output.summary !== 'string' || !output.summary.trim()) {
-        // Allow empty summary if files are present, but log a warning. If no files, then it's an error.
         if (!output.files || output.files.length === 0) {
              throw new Error('The AI model returned an invalid or empty summary and no files. Please refine your request or check model output format instructions.');
         }
         console.warn("IntelligentMerge: AI model returned an empty summary, but files were generated.");
+        // Ensure summary is at least an empty string if it was missing or null
+        output.summary = output.summary || ""; 
     }
-    if (!Array.isArray(output.files)) { // Check if files is an array, even if empty
+    if (!Array.isArray(output.files)) { 
         throw new Error('The AI model returned an invalid data structure for "files". Expected an array of file objects.');
     }
     
-    // Validate each file object if files array is present and not empty
     if (output.files.length > 0) {
       for (const file of output.files) {
         if (!file || typeof file !== 'object') {
           throw new Error('Invalid item in "files" array: Expected file objects.');
         }
         if (typeof file.path !== 'string' || !file.path.trim()) {
-          // If path is empty, this is a critical error as files cannot be created without a path.
           throw new Error('Invalid file object in AI output: "path" must be a non-empty string.');
         }
         if (typeof file.content !== 'string') { 
-          // Content can be an empty string for an empty file, but it must be a string.
-          throw new Error(`Invalid file object in AI output for path "${file.path}": "content" must be a string, even if empty.`);
+          console.warn(`Warning: File "${file.path}" has non-string content. Coercing to empty string.`);
+          file.content = ""; // Coerce to empty string if content is not a string (e.g. null/undefined)
         }
       }
     }
@@ -248,5 +240,3 @@ const intelligentMergeFlow = globalAi.defineFlow(
 export async function intelligentMerge(input: IntelligentMergeInput): Promise<IntelligentMergeOutput> {
   return intelligentMergeFlow(input);
 }
-
-      
