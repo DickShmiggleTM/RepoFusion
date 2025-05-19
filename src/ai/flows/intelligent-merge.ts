@@ -62,7 +62,7 @@ const FileSchema = z.object({
 });
 
 const IntelligentMergeOutputSchema = z.object({
-  files: z.array(FileSchema).describe("An array of file objects representing the conceptually merged codebase. This should form a structured, multi-file prototype aiming for a high degree of conceptual completeness and robustness, demonstrating how significant features from all input repositories might be integrated. If a 'targetLanguage' is specified, ensure common boilerplate files (e.g., 'package.json', 'tsconfig.json' for TypeScript; 'requirements.txt', 'pyproject.toml' for Python) are included with relevant (even if conceptual) dependencies and configurations. Focus on creating a representative skeleton of a potentially complex application, not just a few example files."),
+  files: z.array(FileSchema).describe("An array of file objects representing the conceptually merged codebase. This should form a highly structured, comprehensive, multi-file conceptual prototype aiming for a deep and broad demonstration of how significant features from all input repositories might be integrated. For complex projects, this could conceptually involve up to 500 files, but prioritize structural integrity, logical organization, and meaningful conceptual content for each file over sheer quantity. If a 'targetLanguage' is specified, ensure common boilerplate files (e.g., 'package.json', 'tsconfig.json' for TypeScript; 'requirements.txt', 'pyproject.toml' for Python) are included with relevant (even if conceptual) dependencies and configurations. Focus on creating a representative skeleton of a potentially complex application, detailing key modules, services, configurations, API routes, UI components, and core logic integrations."),
   summary: z
     .string()
     .describe(
@@ -76,7 +76,7 @@ const defineIntelligentMergePrompt = (aiInstance: typeof globalAi) => aiInstance
   name: 'intelligentMergePrompt',
   input: {schema: IntelligentMergeInputSchema},
   output: {schema: IntelligentMergeOutputSchema},
-  prompt: `You are an expert software architect and AI engineer tasked with conceptualizing and planning the merger of codebases from multiple GitHub repositories. Your goal is to produce a highly detailed, robust, and conceptually complete multi-file prototype and a comprehensive summary of your plan. The prototype should demonstrate how significant features from ALL provided repositories can be integrated into a cohesive new application.
+  prompt: `You are an expert software architect and AI engineer tasked with conceptualizing and planning the merger of codebases from multiple GitHub repositories. Your goal is to produce a highly detailed, robust, and exceptionally comprehensive multi-file conceptual prototype and a detailed summary of your plan. The prototype must demonstrate how significant features from ALL provided repositories can be integrated into a cohesive new application.
 
 Source Repositories to Analyze:
 {{#each repositoryUrls}}- {{{this}}}
@@ -88,14 +88,14 @@ User's Additional Instructions: {{#if instructions}}{{{instructions}}}{{else}}No
 
 User's Preferred AI Toolchain Configuration (for your contextual awareness only; perform the task using your current capabilities):
 - Main Generation Model Type: {{{mainApiModel}}}
-{{#if ollamaMainModelName}}  - Ollama Main Model: {{{ollamaMainModelName}}} (Base name: {{ollamaMainModelName}}){{/if}}
+{{#if ollamaMainModelName}}  - Ollama Main Model: {{{ollamaMainModelName}}} (Base name: {{ollamaMainModelName.split(':')[0]}}){{/if}}
 {{#if geminiMainModelName}}  - Gemini Main Model: {{{geminiMainModelName}}}{{/if}}
 {{#if openrouterMainModelName}}  - OpenRouter Main Model: {{{openrouterMainModelName}}}{{/if}}
 {{#if huggingfaceMainModelName}}  - HuggingFace Main Model: {{{huggingfaceMainModelName}}}{{/if}}
 
 {{#if useCustomReasoningModel}}
 - Reasoning Model Type: {{{reasoningApiModel}}}
-{{#if ollamaReasoningModelName}}  - Ollama Reasoning Model: {{{ollamaReasoningModelName}}} (Base name: {{ollamaReasoningModelName}}){{/if}}
+{{#if ollamaReasoningModelName}}  - Ollama Reasoning Model: {{{ollamaReasoningModelName}}} (Base name: {{ollamaReasoningModelName.split(':')[0]}}){{/if}}
 {{#if geminiReasoningModelName}}  - Gemini Reasoning Model: {{{geminiReasoningModelName}}}{{/if}}
 {{#if openrouterReasoningModelName}}  - OpenRouter Reasoning Model: {{{openrouterReasoningModelName}}}{{/if}}
 {{#if huggingfaceReasoningModelName}}  - HuggingFace Reasoning Model: {{{huggingfaceReasoningModelName}}}{{/if}}
@@ -105,7 +105,7 @@ User's Preferred AI Toolchain Configuration (for your contextual awareness only;
 
 {{#if useCustomCodingModel}}
 - Coding Model Type: {{{codingApiModel}}}
-{{#if ollamaCodingModelName}}  - Ollama Coding Model: {{{ollamaCodingModelName}}} (Base name: {{ollamaCodingModelName}}){{/if}}
+{{#if ollamaCodingModelName}}  - Ollama Coding Model: {{{ollamaCodingModelName}}} (Base name: {{ollamaCodingModelName.split(':')[0]}}){{/if}}
 {{#if geminiCodingModelName}}  - Gemini Coding Model: {{{geminiCodingModelName}}}{{/if}}
 {{#if openrouterCodingModelName}}  - OpenRouter Coding Model: {{{openrouterCodingModelName}}}{{/if}}
 {{#if huggingfaceCodingModelName}}  - HuggingFace Coding Model: {{{huggingfaceCodingModelName}}}{{/if}}
@@ -120,7 +120,7 @@ API Keys Provided by User (for context only, you will use your configured capabi
 - OpenRouter Key: {{#if openrouterApiKey}}Provided{{else}}Not provided{{/if}}
 - HuggingFace Key: {{#if huggingfaceApiKey}}Provided{{else}}Not provided{{/if}}
 
-Your Task: Generate a conceptual yet robust multi-file application prototype and a detailed summary.
+Your Task: Generate a comprehensive, conceptual, multi-file application prototype and a detailed summary.
 
 **Part 1: Comprehensive Analysis and Advanced Merge Plan (Field: "summary")**
    a.  **Deep Source Repository Analysis:** For EACH input repository:
@@ -133,25 +133,26 @@ Your Task: Generate a conceptual yet robust multi-file application prototype and
        iii. Address potential overlaps or conflicts in features: which version takes precedence, or how they might be harmonized.
    c.  **Robust Architectural Proposal:**
        i.  Propose a high-level architecture for the merged application (e.g., modular monolith, microservices, event-driven). Justify your choice based on the input repositories and the goal of integrating their features.
-       ii.  Outline key components/modules and their responsibilities.
-       iii. Mention key technologies, design patterns (e.g., CQRS, event sourcing, service discovery if applicable), and data management strategies you envision for this robust application.
+       ii.  Outline key components/modules and their responsibilities in detail.
+       iii. Mention key technologies, design patterns (e.g., CQRS, event sourcing, service discovery if applicable), data management strategies, and potential API designs you envision for this robust application.
    d.  **Challenge Mitigation & Conflict Resolution Strategy:**
-       i.  Identify significant potential challenges (e.g., differing architectural styles, complex dependency conflicts, API incompatibilities, data model merging).
+       i.  Identify significant potential challenges (e.g., differing architectural styles, complex dependency conflicts, API incompatibilities, data model merging, scaling considerations).
        ii. For each challenge, outline a clear, plausible strategy for how it would be resolved in the conceptual prototype.
-   e.  **Rationale for Proposed File Structure:** Explain how the file and directory structure (to be detailed in Part 2) supports the merged functionalities, the proposed architecture, and the target language/framework. It should be logical and scalable.
+   e.  **Rationale for Proposed File Structure:** Explain how the file and directory structure (to be detailed in Part 2) supports the merged functionalities, the proposed architecture, the target language/framework, and scalability. It must be logical and well-justified.
 
 **Part 2: Advanced Conceptual Multi-File Prototype (Field: "files")**
-   a.  **File and Directory Structure Definition:** Based on your comprehensive plan, define a logical and well-organized file and directory structure. This structure must follow common conventions for the target language/framework (if specified) and be suitable for an advanced application.
-   b.  **Key File Generation (Aim for 10-20 critical files):**
-       i.  Provide an array of file objects. Each object MUST have a 'path' (e.g., "src/modules/auth/auth.service.ts", "src/shared/utils/api-client.js", "configs/database.config.json", "package.json", "README.md") and 'content' (the actual textual code, configuration, or markdown).
-       ii. The content for each file should be substantial and representative of the merged concept, demonstrating how functionalities integrate, how new shared components/services might look, or how data flows.
+   a.  **File and Directory Structure Definition:** Based on your comprehensive plan, define a logical, scalable, and well-organized file and directory structure. This structure must follow common conventions for the target language/framework (if specified) and be suitable for an advanced, complex application.
+   b.  **Key File Generation (Conceptually up to 500 files for highly complex projects, but prioritize quality, structure, and representative examples):**
+       i.  Provide an array of file objects. Each object MUST have a 'path' (e.g., "src/modules/auth/auth.service.ts", "src/api/v1/routes/userRoutes.ts", "src/ui/components/DashboardLayout.tsx", "configs/database.config.json", "scripts/deploy.sh", "docs/API.md", "package.json", "README.md") and 'content' (the actual textual code, configuration, or markdown).
+       ii. The content for each file should be substantial and representative of the merged concept, demonstrating how functionalities integrate, how new shared components/services might look, how data flows, or key configurations.
        iii. **Boilerplate and Configuration:** If a 'targetLanguage' is specified (e.g., "TypeScript", "Python"), YOU MUST include essential boilerplate files with thoughtful, conceptual content. For example:
-           - For TypeScript/Node.js: A detailed 'package.json' (listing key conceptual dependencies like Express, NestJS, ORMs, testing libraries, etc.), a 'tsconfig.json' configured for a modern project, and potentially a basic '.eslintrc.json' or 'prettierrc.json'.
-           - For Python: A 'requirements.txt' or 'pyproject.toml' (listing key conceptual dependencies like Django, Flask, SQLAlchemy, Pydantic, testing tools), and potentially a basic setup.py or Dockerfile.
+           - For TypeScript/Node.js: A detailed 'package.json' (listing key conceptual dependencies like Express, NestJS, ORMs, testing libraries, linters, etc.), a 'tsconfig.json' configured for a modern project, and potentially a basic '.eslintrc.json', 'prettierrc.json', or a conceptual 'Dockerfile'.
+           - For Python: A 'requirements.txt' or 'pyproject.toml' (listing key conceptual dependencies like Django, Flask, SQLAlchemy, Pydantic, testing tools, linters), and potentially a basic 'setup.py' or conceptual 'Dockerfile'.
            - For other languages, include equivalent standard project setup files.
-       iv. **Core Logic Representation:** Generate code that shows how core functionalities from DIFFERENT repositories might be integrated. For example, if merging an e-commerce backend with a social media platform, show how user profiles might be linked or how product recommendations might appear in a social feed.
-       v. **Avoid Trivial Placeholders:** Do not produce empty files or files with content like "// TODO: Implement". The content should be your best attempt at representing the merged logic, even if simplified.
-   c.  **Prototype Nature & Robustness:** This output is for an *advanced conceptual prototype*. While not expected to be immediately runnable without further development, it MUST provide a strong, detailed, and robust structural and conceptual foundation for a complex, feature-rich application.
+       iv. **Core Logic Representation:** Generate code that shows how core functionalities from DIFFERENT repositories might be integrated. For example, if merging an e-commerce backend with a social media platform, show how user profiles might be linked, how product recommendations might appear in a social feed, or how shared data models might be structured.
+       v.  **Architectural Components:** Ensure generated files reflect the proposed architecture (e.g., if microservices, show example service definitions, inter-service communication stubs, or API gateway configurations).
+       vi. **Avoid Trivial Placeholders:** Do not produce empty files or files with content like "// TODO: Implement". The content should be your best attempt at representing the merged logic, structure, or configuration, even if simplified for a conceptual prototype. It should be rich enough to convey the design.
+   c.  **Prototype Nature & Robustness:** This output is for an *advanced conceptual prototype*. While not expected to be immediately runnable without further development, it MUST provide a strong, detailed, and robust structural and conceptual foundation for a complex, feature-rich application. The goal is to generate a comprehensive blueprint.
 
 Ensure your entire response strictly adheres to the JSON schema for the output, providing content for both 'files' (an array of file objects) and 'summary' (a string) fields.
 Each file object in the 'files' array must have a 'path' (string) and 'content' (string).
@@ -182,7 +183,6 @@ const intelligentMergeFlow = globalAi.defineFlow(
         modelToUse = `googleai/${input.geminiMainModelName}`;
       } catch (e) {
         console.error("IntelligentMerge: Failed to initialize temporary Genkit instance with user's Gemini key.", e);
-        // Fallback to global Genkit instance but still try to use the selected model
         currentAi = globalAi; 
         configuredPrompt = defineIntelligentMergePrompt(currentAi); 
         modelToUse = `googleai/${input.geminiMainModelName}`; 
@@ -200,8 +200,6 @@ const intelligentMergeFlow = globalAi.defineFlow(
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
       console.warn("IntelligentMerge: HuggingFace model selected. Ensure Genkit is configured with a HuggingFace plugin and API key (see src/ai/genkit.ts) for this to work.");
     } else if (input.mainApiModel === 'llamafile') {
-      // For Llamafile, we might not set a specific model string if the plugin handles it differently or uses a default.
-      // The llamafilePath is available in the input for context.
       console.warn("IntelligentMerge: Llamafile selected as main model. Using default model for generation. Ensure Llamafile is running and accessible if Genkit is configured for it. Llamafile path is available in prompt context.");
     }
 
@@ -217,7 +215,6 @@ const intelligentMergeFlow = globalAi.defineFlow(
         throw new Error('The AI model returned an invalid data structure for "files". Expected an array of file objects.');
     }
     
-    // Validate file structure if files array is present and not empty
     if (output.files.length > 0) {
       for (const file of output.files) {
         if (!file || typeof file !== 'object') {
@@ -226,13 +223,11 @@ const intelligentMergeFlow = globalAi.defineFlow(
         if (typeof file.path !== 'string' || !file.path.trim()) {
           throw new Error('Invalid file object in AI output: "path" must be a non-empty string.');
         }
-        if (typeof file.content !== 'string') { // Content can be empty, but must be a string
+        if (typeof file.content !== 'string') { 
           throw new Error(`Invalid file object in AI output for path "${file.path}": "content" must be a string, even if empty.`);
         }
       }
     }
-    // It's possible to have a valid summary but no files if the merge is deemed not feasible or very simple,
-    // though the new prompt strongly encourages file generation.
     return output;
   }
 );
@@ -241,4 +236,4 @@ export async function intelligentMerge(input: IntelligentMergeInput): Promise<In
   return intelligentMergeFlow(input);
 }
 
-    
+      
