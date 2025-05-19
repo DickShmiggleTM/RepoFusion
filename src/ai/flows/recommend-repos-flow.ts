@@ -9,7 +9,7 @@
  */
 
 import {ai as globalAi} from '@/ai/genkit';
-import {genkit, type ModelArgument} from 'genkit';
+import {genkit, type ModelArgument, type PluginProvider} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
@@ -46,7 +46,7 @@ export type RecommendReposInput = z.infer<typeof RecommendReposInputSchema>;
 
 const RecommendedRepoSchema = z.object({
   name: z.string().describe('The name of the GitHub repository (e.g., "Next.js").'),
-  url: z.string().describe('The full HTTPS URL of the GitHub repository (e.g., "https://github.com/vercel/next.js").'),
+  url: z.string().describe('The full HTTPS URL of the GitHub repository (e.g., "https://github.com/vercel/next.js").'), // .url() removed due to API limitations
   reason: z.string().describe('A brief (1-2 sentence) explanation of why this repository is recommended based on the request.'),
 });
 
@@ -55,15 +55,15 @@ const RecommendReposOutputSchema = z.object({
 });
 export type RecommendReposOutput = z.infer<typeof RecommendReposOutputSchema>;
 
-const defineRecommendReposPrompt = (aiInstance: typeof globalAi) => aiInstance.definePrompt({
+const defineRecommendReposPrompt = (aiInstance: typeof globalAi | ReturnType<typeof genkit>) => aiInstance.definePrompt({
   name: 'recommendReposPrompt',
-  input: {schema: RecommendReposInputSchema}, // Schema defines expected AI input, runtime can have more for template
+  input: {schema: RecommendReposInputSchema}, 
   output: {schema: RecommendReposOutputSchema},
   prompt: `You are an AI assistant specialized in recommending GitHub repositories. Your goal is to suggest exactly 5 repositories.
 
 User's Preferred AI Toolchain Configuration (This is for your contextual awareness. You will perform the task using your current model capabilities. The user is aware that Genkit backend plugins and API keys must be configured for non-Gemini models to be used for actual generation.):
 - Main Model Type: {{{mainApiModel}}}
-{{#if ollamaMainModelName}}- Ollama Model: {{{ollamaMainModelName}}} {{#if ollamaBaseMainModelName}}(Base name: {{ollamaBaseMainModelName}}){{/if}}{{/if}}
+{{#if ollamaMainModelName}}- Ollama Model: {{{ollamaMainModelName}}} {{#if ollamaBaseMainModelName}}(Base name for Genkit: {{ollamaBaseMainModelName}}){{/if}}{{/if}}
 {{#if geminiMainModelName}}- Gemini Model: {{{geminiMainModelName}}}{{/if}}
 {{#if openrouterMainModelName}}- OpenRouter Model: {{{openrouterMainModelName}}}{{/if}}
 {{#if huggingfaceMainModelName}}- HuggingFace Model: {{{huggingfaceMainModelName}}}{{/if}}
@@ -95,7 +95,7 @@ const recommendReposFlow = globalAi.defineFlow(
     outputSchema: RecommendReposOutputSchema,
   },
   async (input) => {
-    let currentAi = globalAi;
+    let currentAi: typeof globalAi | ReturnType<typeof genkit> = globalAi;
     let configuredPrompt = defineRecommendReposPrompt(currentAi);
     let modelToUse: ModelArgument | undefined = undefined;
     
@@ -105,22 +105,26 @@ const recommendReposFlow = globalAi.defineFlow(
     if (input.mainApiModel === 'gemini' && input.geminiApiKey && input.geminiMainModelName) {
       console.log(`RecommendRepos: Using user-provided Gemini API key for model: ${input.geminiMainModelName}`);
       try {
-        const geminiPluginWithKey = googleAI({ apiKey: input.geminiApiKey });
-        currentAi = genkit({ plugins: [geminiPluginWithKey], logLevel: 'warn', flowId: 'recommendReposFlow-gemini-customKey' });
+        const tempGoogleAIPlugin = googleAI({ apiKey: input.geminiApiKey });
+        currentAi = genkit({ 
+            plugins: [tempGoogleAIPlugin as PluginProvider], 
+            logLevel: 'warn', 
+            flowId: 'recommendReposFlow-gemini-customKey' 
+        });
         configuredPrompt = defineRecommendReposPrompt(currentAi);
         modelToUse = `googleai/${input.geminiMainModelName}`;
       } catch (e) {
-        console.error("RecommendRepos: Failed to initialize temporary Genkit instance with user's Gemini key.", e);
-        currentAi = globalAi; // Fallback to global instance
-        configuredPrompt = defineRecommendReposPrompt(currentAi); // Re-define prompt with global AI
-        modelToUse = `googleai/${input.geminiMainModelName}`; // Still attempt to use the model name
+        console.error("RecommendRepos: Failed to initialize temporary Genkit instance with user's Gemini key. Falling back to global Genkit instance.", e);
+        currentAi = globalAi; 
+        configuredPrompt = defineRecommendReposPrompt(currentAi);
+        modelToUse = `googleai/${input.geminiMainModelName}`;
       }
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'ollama' && input.ollamaMainModelName) {
-      const baseModelName = input.ollamaMainModelName.split(':')[0]; 
-      promptInput.ollamaBaseMainModelName = baseModelName;
-      modelToUse = `ollama/${baseModelName}`;
+      const baseModelName = input.ollamaMainModelName.includes(':') ? input.ollamaMainModelName.split(':')[0] : input.ollamaMainModelName;
+      promptInput.ollamaBaseMainModelName = baseModelName; // For display in prompt
+      modelToUse = `ollama/${baseModelName}`; // For Genkit call
       console.warn(`RecommendRepos: Ollama model selected: '${input.ollamaMainModelName}'. Using base name for Genkit: '${baseModelName}'.\nIMPORTANT: Ensure Genkit is configured with an Ollama plugin (see src/ai/genkit.ts) and the model '${baseModelName}' (or the full name including tag) is available locally and accessible by the plugin.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
@@ -129,10 +133,8 @@ const recommendReposFlow = globalAi.defineFlow(
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
       console.warn(`RecommendRepos: HuggingFace model selected: '${input.huggingfaceMainModelName}'.\nIMPORTANT: Ensure Genkit is configured with a HuggingFace plugin and your HF_API_TOKEN is set in .env (see src/ai/genkit.ts) for this to work.`);
     } else if (input.mainApiModel === 'llamafile') {
-      // For Llamafile, we don't typically set a model string like for other providers.
-      // Genkit's Llamafile plugin (if configured) handles the routing.
-      // The 'llamafilePath' from input is for AI's contextual awareness.
-      console.warn(`RecommendRepos: Llamafile selected as main model. Using default configured Llamafile model for generation.\nIMPORTANT: Ensure Llamafile is running and Genkit is configured with a Llamafile plugin (see src/ai/genkit.ts). Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in prompt context.`);
+      modelToUse = undefined; // Llamafile usually relies on default plugin config
+      console.warn(`RecommendRepos: Llamafile selected as main model. Using default configured Llamafile model (if Llamafile plugin is active in src/ai/genkit.ts).\nIMPORTANT: Ensure Llamafile is running and Genkit is configured with a Llamafile plugin. Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in prompt context.`);
     }
     
     const {output} = await configuredPrompt(promptInput, modelToUse ? { model: modelToUse } : undefined);
@@ -140,8 +142,8 @@ const recommendReposFlow = globalAi.defineFlow(
     if (!output || !output.recommendations) {
       throw new Error('AI did not return a valid recommendations structure. Please try again or check model output format instructions.');
     }
-    if (output.recommendations.length !== 5) {
-      throw new Error(`AI did not return exactly 5 recommendations. Received ${output.recommendations.length}. Expected 5.`);
+    if (!Array.isArray(output.recommendations) || output.recommendations.length !== 5) {
+      throw new Error(`AI did not return exactly 5 recommendations. Received ${output.recommendations?.length || 0}. Expected 5.`);
     }
 
     for (const repo of output.recommendations) {
@@ -158,7 +160,7 @@ const recommendReposFlow = globalAi.defineFlow(
             throw new Error(`Invalid URL format for repository "${repo.name}": ${repo.url}. Must be a full HTTP or HTTPS URL.`);
         }
         if (!/github\.com\/[^/]+\/[^/]+/.test(repo.url)) {
-            console.warn(`URL for "${repo.name}" (${repo.url}) does not strictly match 'github.com/owner/repo' pattern, but proceeding.`);
+            console.warn(`RecommendRepos: URL for "${repo.name}" (${repo.url}) does not strictly match a standard 'github.com/owner/repo' pattern, but proceeding.`);
         }
         if (typeof repo.reason !== 'string' || !repo.reason.trim()) {
             throw new Error(`Invalid repository object for "${repo.name}": "reason" must be a non-empty string.`);

@@ -10,7 +10,7 @@
  */
 
 import {ai as globalAi} from '@/ai/genkit';
-import {genkit, type ModelArgument} from 'genkit';
+import {genkit, type ModelArgument, type PluginProvider} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
@@ -72,7 +72,7 @@ const IntelligentMergeOutputSchema = z.object({
 export type IntelligentMergeOutput = z.infer<typeof IntelligentMergeOutputSchema>;
 
 // Note: Schema defines expected AI input, runtime can have more for template
-const defineIntelligentMergePrompt = (aiInstance: typeof globalAi) => aiInstance.definePrompt({
+const defineIntelligentMergePrompt = (aiInstance: typeof globalAi | ReturnType<typeof genkit>) => aiInstance.definePrompt({
   name: 'intelligentMergePrompt',
   input: {schema: IntelligentMergeInputSchema}, 
   output: {schema: IntelligentMergeOutputSchema},
@@ -88,14 +88,14 @@ User's Additional Instructions: {{#if instructions}}{{{instructions}}}{{else}}No
 
 User's Preferred AI Toolchain Configuration (This is for your contextual awareness. You will perform the task using your current model capabilities. The user is aware that Genkit backend plugins and API keys must be configured for non-Gemini models to be used for actual generation.):
 - Main Generation Model Type: {{{mainApiModel}}}
-{{#if ollamaMainModelName}}  - Ollama Main Model: {{{ollamaMainModelName}}} {{#if ollamaBaseMainModelName}}(Base name: {{ollamaBaseMainModelName}}){{/if}}{{/if}}
+{{#if ollamaMainModelName}}  - Ollama Main Model: {{{ollamaMainModelName}}} {{#if ollamaBaseMainModelName}}(Base name for Genkit: {{ollamaBaseMainModelName}}){{/if}}{{/if}}
 {{#if geminiMainModelName}}  - Gemini Main Model: {{{geminiMainModelName}}}{{/if}}
 {{#if openrouterMainModelName}}  - OpenRouter Main Model: {{{openrouterMainModelName}}}{{/if}}
 {{#if huggingfaceMainModelName}}  - HuggingFace Main Model: {{{huggingfaceMainModelName}}}{{/if}}
 
 {{#if useCustomReasoningModel}}
 - Reasoning Model Type: {{{reasoningApiModel}}}
-{{#if ollamaReasoningModelName}}  - Ollama Reasoning Model: {{{ollamaReasoningModelName}}} {{#if ollamaBaseReasoningModelName}}(Base name: {{ollamaBaseReasoningModelName}}){{/if}}{{/if}}
+{{#if ollamaReasoningModelName}}  - Ollama Reasoning Model: {{{ollamaReasoningModelName}}} {{#if ollamaBaseReasoningModelName}}(Base name for Genkit: {{ollamaBaseReasoningModelName}}){{/if}}{{/if}}
 {{#if geminiReasoningModelName}}  - Gemini Reasoning Model: {{{geminiReasoningModelName}}}{{/if}}
 {{#if openrouterReasoningModelName}}  - OpenRouter Reasoning Model: {{{openrouterReasoningModelName}}}{{/if}}
 {{#if huggingfaceReasoningModelName}}  - HuggingFace Reasoning Model: {{{huggingfaceReasoningModelName}}}{{/if}}
@@ -105,7 +105,7 @@ User's Preferred AI Toolchain Configuration (This is for your contextual awarene
 
 {{#if useCustomCodingModel}}
 - Coding Model Type: {{{codingApiModel}}}
-{{#if ollamaCodingModelName}}  - Ollama Coding Model: {{{ollamaCodingModelName}}} {{#if ollamaBaseCodingModelName}}(Base name: {{ollamaBaseCodingModelName}}){{/if}}{{/if}}
+{{#if ollamaCodingModelName}}  - Ollama Coding Model: {{{ollamaCodingModelName}}} {{#if ollamaBaseCodingModelName}}(Base name for Genkit: {{ollamaBaseCodingModelName}}){{/if}}{{/if}}
 {{#if geminiCodingModelName}}  - Gemini Coding Model: {{{geminiCodingModelName}}}{{/if}}
 {{#if openrouterCodingModelName}}  - OpenRouter Coding Model: {{{openrouterCodingModelName}}}{{/if}}
 {{#if huggingfaceCodingModelName}}  - HuggingFace Coding Model: {{{huggingfaceCodingModelName}}}{{/if}}
@@ -166,7 +166,7 @@ const intelligentMergeFlow = globalAi.defineFlow(
     outputSchema: IntelligentMergeOutputSchema,
   },
   async (input) => {
-    let currentAi = globalAi;
+    let currentAi: typeof globalAi | ReturnType<typeof genkit> = globalAi;
     let configuredPrompt = defineIntelligentMergePrompt(currentAi);
     let modelToUse: ModelArgument | undefined = undefined;
     
@@ -176,25 +176,26 @@ const intelligentMergeFlow = globalAi.defineFlow(
     if (input.mainApiModel === 'gemini' && input.geminiApiKey && input.geminiMainModelName) {
       console.log(`IntelligentMerge: Using user-provided Gemini API key for model: ${input.geminiMainModelName}`);
       try {
-        const geminiPluginWithKey = googleAI({ apiKey: input.geminiApiKey });
-        currentAi = genkit({ plugins: [geminiPluginWithKey],
-          logLevel: 'warn', 
-          flowId: 'intelligentMergeFlow-gemini-customKey' 
+        const tempGoogleAIPlugin = googleAI({ apiKey: input.geminiApiKey });
+        currentAi = genkit({ 
+            plugins: [tempGoogleAIPlugin as PluginProvider], // Cast to PluginProvider
+            logLevel: 'warn', 
+            flowId: 'intelligentMergeFlow-gemini-customKey' 
         }); 
         configuredPrompt = defineIntelligentMergePrompt(currentAi); 
         modelToUse = `googleai/${input.geminiMainModelName}`;
       } catch (e) {
-        console.error("IntelligentMerge: Failed to initialize temporary Genkit instance with user's Gemini key.", e);
-        currentAi = globalAi; // Fallback to global instance
-        configuredPrompt = defineIntelligentMergePrompt(currentAi); // Re-define prompt with global AI
-        modelToUse = `googleai/${input.geminiMainModelName}`; // Still attempt to use the model name
+        console.error("IntelligentMerge: Failed to initialize temporary Genkit instance with user's Gemini key. Falling back to global Genkit instance.", e);
+        currentAi = globalAi; 
+        configuredPrompt = defineIntelligentMergePrompt(currentAi);
+        modelToUse = `googleai/${input.geminiMainModelName}`;
       }
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'ollama' && input.ollamaMainModelName) {
-      const baseModelName = input.ollamaMainModelName.split(':')[0];
-      promptInput.ollamaBaseMainModelName = baseModelName;
-      modelToUse = `ollama/${baseModelName}`;
+      const baseModelName = input.ollamaMainModelName.includes(':') ? input.ollamaMainModelName.split(':')[0] : input.ollamaMainModelName;
+      promptInput.ollamaBaseMainModelName = baseModelName; // For display in prompt
+      modelToUse = `ollama/${baseModelName}`; // For Genkit call
       console.warn(`IntelligentMerge: Ollama model selected for main generation: '${input.ollamaMainModelName}'. Using base name for Genkit: '${baseModelName}'.\nIMPORTANT: Ensure Genkit is configured with an Ollama plugin (see src/ai/genkit.ts) and the model '${baseModelName}' (or the full name including tag) is available locally and accessible by the plugin.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
@@ -203,15 +204,16 @@ const intelligentMergeFlow = globalAi.defineFlow(
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
       console.warn(`IntelligentMerge: HuggingFace model selected for main generation: '${input.huggingfaceMainModelName}'.\nIMPORTANT: Ensure Genkit is configured with a HuggingFace plugin and your HF_API_TOKEN is set in .env (see src/ai/genkit.ts) for this to work.`);
     } else if (input.mainApiModel === 'llamafile') {
-      console.warn(`IntelligentMerge: Llamafile selected as main model. Using default configured Llamafile model for generation.\nIMPORTANT: Ensure Llamafile is running and Genkit is configured with a Llamafile plugin (see src/ai/genkit.ts). Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in prompt context.`);
+       modelToUse = undefined; // Llamafile usually relies on default plugin config, not specific model string
+      console.warn(`IntelligentMerge: Llamafile selected as main model. Using default configured Llamafile model (if Llamafile plugin is active in src/ai/genkit.ts).\nIMPORTANT: Ensure Llamafile is running and Genkit is configured with a Llamafile plugin. Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in prompt context.`);
     }
 
-    // Add base names for reasoning and coding models if Ollama is selected for them
+    // Add base names for reasoning and coding models if Ollama is selected for them (for prompt context)
     if (input.useCustomReasoningModel && input.reasoningApiModel === 'ollama' && input.ollamaReasoningModelName) {
-        promptInput.ollamaBaseReasoningModelName = input.ollamaReasoningModelName.split(':')[0];
+        promptInput.ollamaBaseReasoningModelName = input.ollamaReasoningModelName.includes(':') ? input.ollamaReasoningModelName.split(':')[0] : input.ollamaReasoningModelName;
     }
     if (input.useCustomCodingModel && input.codingApiModel === 'ollama' && input.ollamaCodingModelName) {
-        promptInput.ollamaBaseCodingModelName = input.ollamaCodingModelName.split(':')[0];
+        promptInput.ollamaBaseCodingModelName = input.ollamaCodingModelName.includes(':') ? input.ollamaCodingModelName.split(':')[0] : input.ollamaCodingModelName;
     }
 
 
@@ -224,27 +226,34 @@ const intelligentMergeFlow = globalAi.defineFlow(
         if (!output.files || output.files.length === 0) {
              throw new Error('The AI model returned an invalid or empty summary and no files. Please refine your request or check model output format instructions.');
         }
-        console.warn("IntelligentMerge: AI model returned an empty summary, but files were generated.");
-        output.summary = output.summary || ""; 
+        console.warn("IntelligentMerge: AI model returned an empty or invalid summary, but files were generated. Proceeding with files.");
+        output.summary = output.summary || "Summary was not generated by the AI."; 
     }
     if (!Array.isArray(output.files)) { 
-        throw new Error('The AI model returned an invalid data structure for "files". Expected an array of file objects.');
+        console.warn("IntelligentMerge: AI model returned non-array for 'files'. Coercing to empty array.");
+        output.files = [];
     }
     
-    if (output.files.length > 0) {
-      for (const file of output.files) {
-        if (!file || typeof file !== 'object') {
-          throw new Error('Invalid item in "files" array: Expected file objects.');
-        }
-        if (typeof file.path !== 'string' || !file.path.trim()) {
-          throw new Error('Invalid file object in AI output: "path" must be a non-empty string.');
-        }
-        if (typeof file.content !== 'string') { 
-          console.warn(`Warning: File "${file.path}" has non-string content. Coercing to empty string.`);
-          file.content = ""; 
-        }
+    // Validate files structure
+    const validatedFiles = output.files.map((file, index) => {
+      if (!file || typeof file !== 'object') {
+        console.warn(`IntelligentMerge: Invalid item in "files" array at index ${index}. Skipping.`);
+        return null;
       }
-    }
+      if (typeof file.path !== 'string' || !file.path.trim()) {
+         console.warn(`IntelligentMerge: Invalid file object in AI output at index ${index}: "path" must be a non-empty string. Skipping.`);
+        return null;
+      }
+      // Coerce content to string if it's not, including if it's null or undefined
+      if (typeof file.content !== 'string') {
+        console.warn(`IntelligentMerge: File "${file.path}" has non-string content (type: ${typeof file.content}). Coercing to empty string.`);
+        file.content = ""; 
+      }
+      return file;
+    }).filter(file => file !== null) as IntelligentMergeOutput['files'];
+
+    output.files = validatedFiles;
+    
     return output;
   }
 );
