@@ -45,7 +45,7 @@ export type RecommendReposInput = z.infer<typeof RecommendReposInputSchema>;
 
 const RecommendedRepoSchema = z.object({
   name: z.string().describe('The name of the GitHub repository (e.g., "Next.js").'),
-  url: z.string().describe('The full HTTPS URL of the GitHub repository (e.g., "https://github.com/vercel/next.js").'),
+  url: z.string().describe('The full HTTPS URL of the GitHub repository (e.g., "https://github.com/vercel/next.js").'), // No .url() for Google API compatibility
   reason: z.string().describe('A brief (1-2 sentence) explanation of why this repository is recommended based on the request.'),
 });
 
@@ -106,23 +106,22 @@ const recommendReposFlow = ai.defineFlow(
         const tempGoogleAIPlugin = googleAI({ apiKey: input.geminiApiKey });
         currentAi = genkit({
             plugins: [tempGoogleAIPlugin as PluginProvider],
-            logLevel: 'warn',
-            flowId: 'recommendReposFlow-gemini-customKey'
+            logLevel: 'warn', // Keep logs leaner for temporary instances
+            flowId: 'recommendReposFlow-gemini-customKey' // Unique ID for this flow instance
         });
-        configuredPrompt = defineRecommendReposPrompt(currentAi);
+        configuredPrompt = defineRecommendReposPrompt(currentAi); // Re-define prompt with temporary AI instance
         modelToUse = `googleai/${input.geminiMainModelName}`;
       } catch (e) {
         console.error("RecommendRepos: Failed to initialize temporary Genkit instance with user's Gemini key. Falling back to global Genkit instance.", e);
-        currentAi = ai;
-        configuredPrompt = defineRecommendReposPrompt(currentAi);
-        modelToUse = `googleai/${input.geminiMainModelName}`;
+        // currentAi and configuredPrompt remain the global ones
+        modelToUse = `googleai/${input.geminiMainModelName}`; // Still attempt to use the selected model
       }
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'ollama' && input.ollamaMainModelName) {
       const baseModelName = input.ollamaMainModelName.includes(':') ? input.ollamaMainModelName.split(':')[0] : input.ollamaMainModelName;
-      promptInput.ollamaBaseMainModelName = baseModelName;
-      modelToUse = `ollama/${baseModelName}`;
+      promptInput.ollamaBaseMainModelName = baseModelName; // For prompt context
+      modelToUse = `ollama/${baseModelName}`; // Use base name for Genkit
       console.warn(`RecommendRepos: Ollama model selected: '${input.ollamaMainModelName}'. Using base name for Genkit: '${baseModelName}'.
 IMPORTANT: For Ollama to function, ensure the Ollama Genkit plugin is correctly INSTALLED, CONFIGURED, and INITIALIZED in 'src/ai/genkit.ts'. Also, ensure your Ollama server is RUNNING and the model '${baseModelName}' (or the full name including tag) is PULLED and ACCESSIBLE by the plugin.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
@@ -134,13 +133,13 @@ IMPORTANT: For OpenRouter to function, ensure the OpenRouter Genkit plugin is co
       console.warn(`RecommendRepos: HuggingFace model selected: '${input.huggingfaceMainModelName}'.
 IMPORTANT: For HuggingFace to function, ensure the HuggingFace Genkit plugin is correctly INSTALLED, CONFIGURED, and INITIALIZED in 'src/ai/genkit.ts', and your HF_API_TOKEN is SET in your '.env' file.`);
     } else if (input.mainApiModel === 'llamafile') {
-      modelToUse = undefined;
+      modelToUse = undefined; // Llamafile plugin would handle model choice
       console.warn(`RecommendRepos: Llamafile selected as main model. Using default configured Llamafile model (if a Llamafile Genkit plugin is active in src/ai/genkit.ts).
 IMPORTANT: Ensure your Llamafile executable is RUNNING (if applicable) and Genkit is configured with a Llamafile plugin in 'src/ai/genkit.ts'. The Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in the prompt context for the AI's awareness.`);
     } else {
         console.warn("RecommendRepos: No specific main model selected or configured. Ensure Genkit has a default model or that a selection from the UI is valid and supported by the backend configuration in 'src/ai/genkit.ts'.");
     }
-
+    
     const {output} = await configuredPrompt(promptInput, modelToUse ? { model: modelToUse } : undefined);
 
     if (!output || !output.recommendations) {
@@ -150,6 +149,7 @@ IMPORTANT: Ensure your Llamafile executable is RUNNING (if applicable) and Genki
       throw new Error(`AI did not return exactly 5 recommendations. Received ${output.recommendations?.length || 0}. Expected 5.`);
     }
 
+    // Validate each recommendation
     for (const repo of output.recommendations) {
         if (!repo || typeof repo !== 'object') {
           throw new Error('Invalid item in "recommendations" array: Expected repository objects.');
@@ -160,9 +160,11 @@ IMPORTANT: Ensure your Llamafile executable is RUNNING (if applicable) and Genki
         if (typeof repo.url !== 'string' || !repo.url.trim()) {
             throw new Error(`Invalid repository object for "${repo.name}": "url" must be a non-empty string.`);
         }
+        // Basic URL check
         if (!repo.url.startsWith('http://') && !repo.url.startsWith('https://')) {
             throw new Error(`Invalid URL format for repository "${repo.name}": ${repo.url}. Must be a full HTTP or HTTPS URL.`);
         }
+        // Optional: check for typical GitHub structure, but don't make it a hard error
         if (!/github\.com\/[^/]+\/[^/]+/.test(repo.url)) {
             console.warn(`RecommendRepos: URL for "${repo.name}" (${repo.url}) does not strictly match a standard 'github.com/owner/repo' pattern, but proceeding.`);
         }

@@ -26,9 +26,12 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState<string>("Error Fetching Recommendations");
   const [isServiceUnavailable, setIsServiceUnavailable] = useState(false);
+  const [currentModeAttempt, setCurrentModeAttempt] = useState<'general' | 'promptBased'>('general');
+
   const { toast } = useToast();
 
   const handleGetRecommendations = async (mode: 'general' | 'promptBased') => {
+    setCurrentModeAttempt(mode); // Store the mode for retry
     if (mode === 'promptBased' && !promptDescription.trim()) {
       toast({
         title: "Prompt Required",
@@ -42,7 +45,7 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
     setError(null);
     setIsServiceUnavailable(false);
     setRecommendations(null);
-    setErrorTitle("Error Fetching Recommendations"); // Reset default error title
+    setErrorTitle("Error Fetching Recommendations");
 
 
     const flowInput: RecommendReposInput = {
@@ -57,7 +60,6 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
       geminiApiKey: appSettings.geminiApiKey,
       openrouterApiKey: appSettings.openrouterApiKey,
       huggingfaceApiKey: appSettings.huggingfaceApiKey,
-      // Pass through other model settings for AI's contextual awareness if needed
       useCustomReasoningModel: appSettings.useCustomReasoningModel,
       reasoningApiModel: appSettings.reasoningApiModel,
       ollamaReasoningModelName: appSettings.ollamaReasoningModelName,
@@ -80,25 +82,34 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
       const errorMessage = (err as Error).message;
       let detailedErrorMessage = errorMessage;
       let currentErrorTitle = "Recommendation Failed";
-      setIsServiceUnavailable(false);
+      setIsServiceUnavailable(false); // Reset service unavailable flag
 
-      if (errorMessage.includes('NOT_FOUND') && flowInput.mainApiModel) {
-        currentErrorTitle = `${flowInput.mainApiModel.charAt(0).toUpperCase() + flowInput.mainApiModel.slice(1)} Model Not Found`;
-        let specificAdvice = "Please ensure the model ID is correct and accessible.";
+      const modelName = flowInput.mainApiModel === 'gemini' ? flowInput.geminiMainModelName :
+                       flowInput.mainApiModel === 'ollama' ? flowInput.ollamaMainModelName :
+                       flowInput.mainApiModel === 'openrouter' ? flowInput.openrouterMainModelName :
+                       flowInput.mainApiModel === 'huggingface' ? flowInput.huggingfaceMainModelName :
+                       'the selected model';
+
+      if (errorMessage.includes('NOT_FOUND') || errorMessage.toLowerCase().includes('model not found')) {
+        currentErrorTitle = `${flowInput.mainApiModel ? flowInput.mainApiModel.charAt(0).toUpperCase() + flowInput.mainApiModel.slice(1) : 'Selected'} Model Not Found`;
+        let specificAdvice = `The model '${modelName}' could not be found or accessed.`;
         if (flowInput.mainApiModel === 'openrouter') {
-          specificAdvice = "Ensure the OpenRouter Genkit plugin is correctly configured in src/hooks/useGenkit.ts and your OPENROUTER_API_KEY in .env is valid and has access to the model.";
+          specificAdvice += " Ensure your OpenRouter API Key (in Settings or .env) is valid and has access to this model. Also verify the OpenRouter Genkit plugin is correctly configured in 'src/ai/genkit.ts'.";
         } else if (flowInput.mainApiModel === 'huggingface') {
-          specificAdvice = "Ensure the HuggingFace Genkit plugin is configured in src/hooks/useGenkit.ts, your HF_API_TOKEN in .env is valid, and the model ID is correct.";
+          specificAdvice += " Ensure your HuggingFace API Token (in Settings or .env) is valid. Also verify the HuggingFace Genkit plugin is correctly configured in 'src/ai/genkit.ts'.";
         } else if (flowInput.mainApiModel === 'ollama') {
-          specificAdvice = "Ensure your Ollama server is running, the specified model is pulled (e.g., 'ollama pull modelname'), and the Ollama Genkit plugin (if used) is configured in src/hooks/useGenkit.ts.";
+          specificAdvice += " Ensure your Ollama server is running, the specified model is pulled (e.g., 'ollama pull modelname'), and the Ollama Genkit plugin is configured in 'src/ai/genkit.ts'.";
         } else if (flowInput.mainApiModel === 'gemini') {
-            specificAdvice = "Ensure your Gemini API key is valid, has access to the specified model, and the model name is correct (e.g., 'gemini-1.5-flash-latest').";
+            specificAdvice += " Ensure your Gemini API key (in Settings) is valid and has access to this model. The model name should be like 'gemini-1.5-flash-latest'.";
         }
         detailedErrorMessage = `${specificAdvice} Original error: ${errorMessage}`;
       } else if (errorMessage.includes('503') || errorMessage.toLowerCase().includes('service unavailable') || errorMessage.toLowerCase().includes('overloaded')) {
         currentErrorTitle = "AI Service Temporarily Unavailable";
-        detailedErrorMessage = "The AI model is currently busy or overloaded. Please try again in a few moments.";
+        detailedErrorMessage = `The AI model provider for '${modelName}' is currently busy or overloaded. Please try again in a few moments.`;
         setIsServiceUnavailable(true);
+      } else if (errorMessage.toLowerCase().includes('api key') || errorMessage.toLowerCase().includes('authentication')) {
+        currentErrorTitle = "Authentication Error";
+        detailedErrorMessage = `There seems to be an issue with your API key for ${flowInput.mainApiModel || 'the selected service'}. Please check it in Settings or your .env file. Original: ${errorMessage}`;
       }
       
       setError(detailedErrorMessage);
@@ -114,9 +125,11 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
     if (recommendations && recommendations.length > 0) {
       const urls = recommendations.map(rec => rec.url);
       onAddRecommendedReposToForm(urls);
-      toast({ title: "Repositories Added", description: "Recommended repository URLs have been added to the merge list." });
+      // Toast is now handled by RepoInputForm's addRepositoryUrls
     }
   };
+
+  const canRetry = isServiceUnavailable || (error && error.toLowerCase().includes("model not found"));
 
   return (
     <Window title="AI Repository Recommendations" icon={<Lightbulb size={18} />} className="min-h-[300px] flex flex-col">
@@ -139,7 +152,7 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
               disabled={isLoading}
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/80"
             >
-              {isLoading ? <Loader2 className="animate-spin mr-2" /> : <Sparkles size={16} className="mr-2" />}
+              {isLoading && currentModeAttempt === 'general' ? <Loader2 className="animate-spin mr-2" /> : <Sparkles size={16} className="mr-2" />}
               General Recommendations
             </Button>
             <Button 
@@ -148,7 +161,7 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
               variant="outline"
               className="flex-1 border-primary text-primary hover:bg-primary/10"
             >
-              {isLoading && promptDescription.trim() ? <Loader2 className="animate-spin mr-2" /> : <Sparkles size={16} className="mr-2" />}
+              {isLoading && currentModeAttempt === 'promptBased' ? <Loader2 className="animate-spin mr-2" /> : <Sparkles size={16} className="mr-2" />}
               Get by Prompt
             </Button>
           </div>
@@ -172,11 +185,11 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
             <p className="font-semibold text-lg mb-1 text-center">
               {errorTitle}
             </p>
-            <p className="text-xs text-center mb-3 max-w-md break-words">
+            <p className="text-xs text-center mb-3 max-w-md break-words whitespace-pre-line">
               {error}
             </p>
-             {(isServiceUnavailable || errorTitle.includes("Model Not Found")) && (
-              <Button variant="outline" onClick={() => handleGetRecommendations(promptDescription.trim() ? 'promptBased' : 'general')} className="mt-4 border-primary text-primary hover:bg-primary/10">
+             {canRetry && (
+              <Button variant="outline" onClick={() => handleGetRecommendations(currentModeAttempt)} className="mt-4 border-primary text-primary hover:bg-primary/10">
                 <RotateCw size={16} className="mr-2"/> Try Again
               </Button>
             )}
@@ -187,7 +200,7 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
           <>
             <Separator className="my-3 bg-border/50"/>
             <h3 className="text-md font-semibold text-primary mb-2 px-1">Recommended Repositories:</h3>
-            <ScrollArea className="flex-grow pr-2 custom-scrollbar">
+            <ScrollArea className="flex-grow pr-2 custom-scrollbar max-h-[calc(100vh-450px)] sm:max-h-[300px]"> {/* Max height for scroll area */}
               <div className="space-y-3">
                 {recommendations.map((rec, index) => (
                   <Card key={index} className="bg-card/70 border-primary/30 animate-fade-in-up hover:border-primary/60 hover:shadow-md transition-all" style={{animationDelay: `${index * 100}ms`}}>

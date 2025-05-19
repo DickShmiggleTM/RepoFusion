@@ -22,24 +22,27 @@ type GeneratedFile = IntelligentMergeOutput['files'][0];
 export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
   const { toast } = useToast();
   const [selectedFile, setSelectedFile] = useState<GeneratedFile | null>(null);
-  const [activeTab, setActiveTab] = useState("summary"); 
+  const [activeTab, setActiveTab] = useState("summary"); // Default to summary
 
   const hasFiles = output?.files && output.files.length > 0;
   const hasSummary = output?.summary && output.summary.trim() !== '';
 
   useEffect(() => {
     if (hasFiles) {
-      setSelectedFile(output!.files[0]); // output must be non-null if hasFiles is true
-      if (activeTab !== "code") setActiveTab("code"); 
+      // If files exist, select the first file and switch to the code tab
+      setSelectedFile(output!.files[0]);
+      setActiveTab("code");
     } else if (hasSummary) {
+      // If no files but summary exists, clear selected file and switch to summary tab
       setSelectedFile(null);
-      if (activeTab !== "summary") setActiveTab("summary");
-    } else { 
+      setActiveTab("summary");
+    } else {
+      // If neither exists, clear selected file and default to summary tab (which will show empty state)
       setSelectedFile(null);
-      setActiveTab("summary"); 
+      setActiveTab("summary");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [output, hasFiles, hasSummary]); 
+  }, [output]); // Re-run when output changes
 
 
   if (!hasFiles && !hasSummary) {
@@ -71,6 +74,7 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
     });
 
     try {
+      toast({ title: "Generating ZIP...", description: "Please wait while the project files are being zipped." });
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, "repofusion_merged_project.zip");
       toast({ title: "Download Started!", description: "Your merged project ZIP is downloading." });
@@ -102,7 +106,7 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col">
         <TabsList className="grid w-full grid-cols-2 bg-muted/50">
           <TabsTrigger value="code" disabled={!hasFiles} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">Generated Files</TabsTrigger>
-          <TabsTrigger value="summary" disabled={!hasSummary} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">Summary</TabsTrigger>
+          <TabsTrigger value="summary" disabled={!hasSummary} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">Summary & Plan</TabsTrigger>
         </TabsList>
 
         <TabsContent value="code" className={cn("flex-grow mt-0 overflow-hidden relative data-[state=active]:animate-fade-in data-[state=inactive]:hidden", !hasFiles && "hidden")}>
@@ -122,7 +126,7 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
                       title={file.path}
                     >
                       <FileCode size={14} className="mr-2 shrink-0" />
-                      <span className="truncate">{file.path.split('/').pop()}</span>
+                      <span className="truncate">{file.path.split('/').pop() || file.path}</span>
                       <ChevronRight size={14} className="ml-auto shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
                     </Button>
                   ))}
@@ -132,7 +136,7 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
                 {selectedFile ? (
                   <>
                     <div className="p-2 border-b border-border text-xs text-muted-foreground bg-muted/30 truncate flex justify-between items-center">
-                      <span>{selectedFile.path}</span>
+                      <span className="truncate" title={selectedFile.path}>{selectedFile.path}</span>
                       <Button onClick={handleCopyFileContent} size="icon" variant="ghost" className="h-6 w-6 text-primary hover:bg-primary/10 hover:text-primary">
                         <Copy size={12} />
                          <span className="sr-only">Copy Code</span>
@@ -165,17 +169,26 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
                     <span className="sr-only">Copy Summary</span>
                 </Button>
               </div>
-              <ScrollArea className="h-full w-full p-1 bg-input rounded-sm custom-scrollbar">
-                <div className="p-4">
+              <ScrollArea className="h-full w-full p-1 bg-input rounded-sm custom-scrollbar"> {/* Ensure h-full for ScrollArea to take effect */}
+                <div className="p-4"> {/* Add padding inside ScrollArea */}
                   <p className="text-sm whitespace-pre-wrap">{output.summary}</p>
                 </div>
               </ScrollArea>
             </>
           )}
+           {!hasSummary && activeTab === "summary" && ( // Show empty state for summary tab if no summary
+                <div className="flex flex-col items-center justify-center h-full text-center p-4 animate-fade-in">
+                    <FileText size={48} className="text-primary/70 mb-4 animate-pulse" />
+                    <h3 className="text-lg font-semibold text-primary mb-2">No Summary Available</h3>
+                    <p className="text-sm text-muted-foreground">
+                        The AI did not provide a summary for this merge operation.
+                    </p>
+                </div>
+            )}
         </TabsContent>
       </Tabs>
-      {hasFiles && (
-         <div className="p-2 border-t border-border mt-auto">
+      {hasFiles && ( // Only show download button if there are files
+         <div className="p-2 border-t border-border mt-auto"> {/* Ensure it's at the bottom */}
           <Button onClick={handleDownloadZip} className="w-full bg-primary text-primary-foreground hover:bg-primary/80">
             <DownloadCloud size={16} className="mr-2" /> Download Project Files (.zip)
           </Button>
