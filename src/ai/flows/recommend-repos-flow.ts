@@ -115,9 +115,9 @@ const recommendReposFlow = ai.defineFlow(
         modelToUse = `googleai/${input.geminiMainModelName}`;
       } catch (e) {
         console.error("RecommendRepos: Failed to initialize temporary Genkit instance with user's Gemini key. Falling back to global Genkit instance.", e);
-        currentAi = ai; 
-        configuredPrompt = defineRecommendReposPrompt(currentAi);
-        modelToUse = `googleai/${input.geminiMainModelName}`;
+        currentAi = ai; // Fallback to global instance
+        configuredPrompt = defineRecommendReposPrompt(currentAi); // Re-define prompt with fallback instance
+        modelToUse = `googleai/${input.geminiMainModelName}`; // Still attempt to use the model name
       }
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
@@ -126,21 +126,21 @@ const recommendReposFlow = ai.defineFlow(
       promptInput.ollamaBaseMainModelName = baseModelName; // For display in prompt
       modelToUse = `ollama/${baseModelName}`; // For Genkit call
       console.warn(`RecommendRepos: Ollama model selected: '${input.ollamaMainModelName}'. Using base name for Genkit: '${baseModelName}'.
-IMPORTANT: Ensure Genkit is configured with an Ollama plugin (see src/ai/genkit.ts) and the model '${baseModelName}' (or the full name including tag) is available locally and accessible by the plugin.`);
+IMPORTANT: For Ollama to function, ensure the Ollama Genkit plugin is correctly INSTALLED, CONFIGURED, and INITIALIZED in 'src/ai/genkit.ts'. Also, ensure your Ollama server is RUNNING and the model '${baseModelName}' (or the full name including tag) is PULLED and ACCESSIBLE by the plugin.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
       console.warn(`RecommendRepos: OpenRouter model selected: '${input.openrouterMainModelName}'.
-IMPORTANT: Ensure Genkit is configured with an OpenRouter plugin and your OPENROUTER_API_KEY is set in .env (see src/ai/genkit.ts) for this to work.`);
+IMPORTANT: For OpenRouter to function, ensure the OpenRouter Genkit plugin is correctly INSTALLED, CONFIGURED, and INITIALIZED in 'src/ai/genkit.ts', and your OPENROUTER_API_KEY is SET in your '.env' file.`);
     } else if (input.mainApiModel === 'huggingface' && input.huggingfaceMainModelName) {
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
       console.warn(`RecommendRepos: HuggingFace model selected: '${input.huggingfaceMainModelName}'.
-IMPORTANT: Ensure Genkit is configured with a HuggingFace plugin and your HF_API_TOKEN is set in .env (see src/ai/genkit.ts) for this to work.`);
+IMPORTANT: For HuggingFace to function, ensure the HuggingFace Genkit plugin is correctly INSTALLED, CONFIGURED, and INITIALIZED in 'src/ai/genkit.ts', and your HF_API_TOKEN is SET in your '.env' file.`);
     } else if (input.mainApiModel === 'llamafile') {
       modelToUse = undefined; // Llamafile usually relies on default plugin config
       console.warn(`RecommendRepos: Llamafile selected as main model. Using default configured Llamafile model (if Llamafile plugin is active in src/ai/genkit.ts).
-IMPORTANT: Ensure Llamafile is running and Genkit is configured with a Llamafile plugin. Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in prompt context.`);
+IMPORTANT: Ensure Llamafile is RUNNING and Genkit is configured with a Llamafile plugin in 'src/ai/genkit.ts'. Llamafile path ('${input.llamafilePath || 'Not provided'}') is available in prompt context.`);
     } else {
-        console.warn("RecommendRepos: No main model selected. Ensure Genkit is configured with a default model (see src/ai/genkit.ts).");
+        console.warn("RecommendRepos: No specific main model selected or configured. Ensure Genkit has a default model or that a selection from the UI is valid and supported by the backend configuration in 'src/ai/genkit.ts'.");
     }
     
     const {output} = await configuredPrompt(promptInput, modelToUse ? { model: modelToUse } : undefined);
