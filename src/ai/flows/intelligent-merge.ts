@@ -183,8 +183,10 @@ const intelligentMergeFlow = globalAi.defineFlow(
         modelToUse = `googleai/${input.geminiMainModelName}`;
       } catch (e) {
         console.error("IntelligentMerge: Failed to initialize temporary Genkit instance with user's Gemini key.", e);
+        // Fallback to global Genkit instance and model if temporary instance fails
         currentAi = globalAi; 
         configuredPrompt = defineIntelligentMergePrompt(currentAi); 
+        // Still attempt to use the specified model name, but with the global API key
         modelToUse = `googleai/${input.geminiMainModelName}`; 
       }
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
@@ -200,30 +202,41 @@ const intelligentMergeFlow = globalAi.defineFlow(
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
       console.warn("IntelligentMerge: HuggingFace model selected. Ensure Genkit is configured with a HuggingFace plugin and API key (see src/ai/genkit.ts) for this to work.");
     } else if (input.mainApiModel === 'llamafile') {
+      // For Llamafile, it's often used without a specific model sub-identifier if Genkit is configured for a default Llamafile endpoint.
+      // The `llamafilePath` from input is primarily for contextual awareness in the prompt.
       console.warn("IntelligentMerge: Llamafile selected as main model. Using default model for generation. Ensure Llamafile is running and accessible if Genkit is configured for it. Llamafile path is available in prompt context.");
+      // `modelToUse` might remain undefined, letting Genkit use its default or a Llamafile plugin's default.
     }
 
     const {output} = await configuredPrompt(input, modelToUse ? { model: modelToUse } : undefined);
     
+    // Robust output validation
     if (!output) {
       throw new Error('The AI model did not return a valid output. Please try again with a more specific prompt or check model availability.');
     }
     if (typeof output.summary !== 'string' || !output.summary.trim()) {
-        throw new Error('The AI model returned an invalid or empty summary. Please refine your request or check model output format instructions.');
+        // Allow empty summary if files are present, but log a warning. If no files, then it's an error.
+        if (!output.files || output.files.length === 0) {
+             throw new Error('The AI model returned an invalid or empty summary and no files. Please refine your request or check model output format instructions.');
+        }
+        console.warn("IntelligentMerge: AI model returned an empty summary, but files were generated.");
     }
     if (!Array.isArray(output.files)) { // Check if files is an array, even if empty
         throw new Error('The AI model returned an invalid data structure for "files". Expected an array of file objects.');
     }
     
+    // Validate each file object if files array is present and not empty
     if (output.files.length > 0) {
       for (const file of output.files) {
         if (!file || typeof file !== 'object') {
           throw new Error('Invalid item in "files" array: Expected file objects.');
         }
         if (typeof file.path !== 'string' || !file.path.trim()) {
+          // If path is empty, this is a critical error as files cannot be created without a path.
           throw new Error('Invalid file object in AI output: "path" must be a non-empty string.');
         }
         if (typeof file.content !== 'string') { 
+          // Content can be an empty string for an empty file, but it must be a string.
           throw new Error(`Invalid file object in AI output for path "${file.path}": "content" must be a string, even if empty.`);
         }
       }

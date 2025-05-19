@@ -42,7 +42,7 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
     setError(null);
     setIsServiceUnavailable(false);
     setRecommendations(null);
-    setErrorTitle("Error Fetching Recommendations");
+    setErrorTitle("Error Fetching Recommendations"); // Reset default error title
 
 
     const flowInput: RecommendReposInput = {
@@ -57,6 +57,7 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
       geminiApiKey: appSettings.geminiApiKey,
       openrouterApiKey: appSettings.openrouterApiKey,
       huggingfaceApiKey: appSettings.huggingfaceApiKey,
+      // Pass through other model settings for AI's contextual awareness if needed
       useCustomReasoningModel: appSettings.useCustomReasoningModel,
       reasoningApiModel: appSettings.reasoningApiModel,
       ollamaReasoningModelName: appSettings.ollamaReasoningModelName,
@@ -90,6 +91,8 @@ export function RepoRecommendationSection({ appSettings, onAddRecommendedReposTo
           specificAdvice = "Ensure the HuggingFace Genkit plugin is configured in src/ai/genkit.ts, your HF_API_TOKEN in .env is valid, and the model ID is correct.";
         } else if (flowInput.mainApiModel === 'ollama') {
           specificAdvice = "Ensure your Ollama server is running, the specified model is pulled (e.g., 'ollama pull modelname'), and the Ollama Genkit plugin (if used) is configured in src/ai/genkit.ts.";
+        } else if (flowInput.mainApiModel === 'gemini') {
+            specificAdvice = "Ensure your Gemini API key is valid, has access to the specified model, and the model name is correct (e.g., 'gemini-1.5-flash-latest').";
         }
         detailedErrorMessage = `${specificAdvice} Original error: ${errorMessage}`;
       } else if (errorMessage.includes('503') || errorMessage.toLowerCase().includes('service unavailable') || errorMessage.toLowerCase().includes('overloaded')) {

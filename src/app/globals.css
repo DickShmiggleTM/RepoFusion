@@ -103,6 +103,11 @@ body {
   *:focus-visible {
     @apply outline-none ring-2 ring-offset-2 ring-ring ring-offset-background;
   }
+
+  .kbd-key {
+    @apply px-1.5 py-0.5 border border-foreground/50 rounded-sm bg-muted text-foreground/90 text-xs shadow-sm;
+    font-family: var(--font-geist-sans), sans-serif; /* Use sans-serif for kbd for better readability */
+  }
 }
 
 @layer components {
@@ -124,3 +129,4 @@ body {
     animation-delay: 100ms;
   }
 }
+

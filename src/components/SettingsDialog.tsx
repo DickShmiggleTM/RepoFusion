@@ -26,6 +26,8 @@ import { Input } from "@/components/ui/input";
 import { Cog, AlertTriangle, KeyRound, Loader2, RotateCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 interface SettingsDialogProps {
   isOpen: boolean;
@@ -114,10 +116,10 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
       if (modelNames.length === 0) {
         setModelError('ollama', category, "No models found. Pull models using 'ollama pull <model_name>'.");
       } else {
-        // Auto-select default if current selection is empty or not in the list
         const modelField = getCategorySpecificModelField(category, 'ollama');
         if (modelField && (!settings[modelField] || !modelNames.includes(settings[modelField] as string))) {
-          const defaultOllamaModel = modelNames.includes('llama3') ? 'llama3' : modelNames[0];
+          const defaultOllamaModel = modelNames.includes('llama3') ? 'llama3' : 
+                                   modelNames.includes(defaultAppSettings.ollamaMainModelName!) ? defaultAppSettings.ollamaMainModelName! : modelNames[0];
           setSettings(prev => ({ ...prev, [modelField]: defaultOllamaModel }));
         }
       }
@@ -128,7 +130,8 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
     } finally {
       setModelLoading('ollama', category, false);
     }
-  }, [settings]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.ollamaMainModelName, settings.ollamaReasoningModelName, settings.ollamaCodingModelName]);
 
   const fetchGeminiModels = useCallback(async (apiKey: string, category: ModelCategory) => {
     if (!apiKey) {
@@ -155,7 +158,8 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
       } else {
         const modelField = getCategorySpecificModelField(category, 'gemini');
         if (modelField && (!settings[modelField] || !usableModels.find(m => m.value === settings[modelField]))) {
-            const defaultGeminiModel = usableModels.find(m => m.value === 'gemini-1.5-flash-latest') ? 'gemini-1.5-flash-latest' : usableModels[0].value;
+            const defaultGeminiModel = usableModels.find(m => m.value === 'gemini-1.5-flash-latest') ? 'gemini-1.5-flash-latest' :
+                                       usableModels.find(m => m.value === defaultAppSettings.geminiMainModelName) ? defaultAppSettings.geminiMainModelName! : usableModels[0].value;
             setSettings(prev => ({ ...prev, [modelField]: defaultGeminiModel }));
         }
       }
@@ -166,12 +170,15 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
     } finally {
       setModelLoading('gemini', category, false);
     }
-  }, [settings]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.geminiMainModelName, settings.geminiReasoningModelName, settings.geminiCodingModelName]);
 
   const fetchOpenRouterModels = useCallback(async (category: ModelCategory) => {
     setModelLoading('openrouter', category, true);
     setModelError('openrouter', category, null);
     try {
+      // Note: OpenRouter's /models endpoint doesn't strictly need an API key for listing.
+      // However, having the key configured is crucial for actual model usage.
       const response = await fetch('https://openrouter.ai/api/v1/models');
       if (!response.ok) throw new Error(`Failed to fetch OpenRouter models (status: ${response.status}).`);
       const data: OpenRouterModelsResponse = await response.json();
@@ -182,8 +189,11 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
       } else {
         const modelField = getCategorySpecificModelField(category, 'openrouter');
          if (modelField && (!settings[modelField] || !modelOptions.find(m=> m.value === settings[modelField]))) {
-            // No standard default for OpenRouter, pick the first one if current is invalid
-            setSettings(prev => ({ ...prev, [modelField]: modelOptions[0].value }));
+            // No standard OpenRouter default, attempt to find a common one or pick the first.
+            const preferredModel = modelOptions.find(m => m.value.includes("llama-3") && m.value.includes("instruct"))?.value || 
+                                 modelOptions.find(m=> m.value === defaultAppSettings.openrouterMainModelName)?.value || 
+                                 modelOptions[0].value;
+            setSettings(prev => ({ ...prev, [modelField]: preferredModel }));
         }
       }
     } catch (err) {
@@ -193,7 +203,8 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
     } finally {
       setModelLoading('openrouter', category, false);
     }
-  }, [settings]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.openrouterMainModelName, settings.openrouterReasoningModelName, settings.openrouterCodingModelName]);
 
 
   const handleModelTypeChange = (
@@ -203,13 +214,13 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
   ) => {
     
     const modelNameResetFields: Partial<AppSettings> = {};
-    const currentCategoryPrefix = category === 'main' ? 'Main' : category.charAt(0).toUpperCase() + category.slice(1);
+    const currentCategoryPrefix = category.charAt(0).toUpperCase() + category.slice(1);
 
-    // Reset all specific model name fields for this category
-    modelNameResetFields[`ollama${currentCategoryPrefix}ModelName`] = defaultAppSettings[`ollama${currentCategoryPrefix}ModelName`];
-    modelNameResetFields[`gemini${currentCategoryPrefix}ModelName`] = defaultAppSettings[`gemini${currentCategoryPrefix}ModelName`];
-    modelNameResetFields[`openrouter${currentCategoryPrefix}ModelName`] = defaultAppSettings[`openrouter${currentCategoryPrefix}ModelName`];
-    modelNameResetFields[`huggingface${currentCategoryPrefix}ModelName`] = defaultAppSettings[`huggingface${currentCategoryPrefix}ModelName`];
+    // Reset all specific model name fields for this category to their defaults
+    modelNameResetFields[`ollama${currentCategoryPrefix}ModelName`] = defaultAppSettings[`ollama${currentCategoryPrefix}ModelName` as keyof AppSettings];
+    modelNameResetFields[`gemini${currentCategoryPrefix}ModelName`] = defaultAppSettings[`gemini${currentCategoryPrefix}ModelName` as keyof AppSettings];
+    modelNameResetFields[`openrouter${currentCategoryPrefix}ModelName`] = defaultAppSettings[`openrouter${currentCategoryPrefix}ModelName` as keyof AppSettings];
+    modelNameResetFields[`huggingface${currentCategoryPrefix}ModelName`] = defaultAppSettings[`huggingface${currentCategoryPrefix}ModelName` as keyof AppSettings];
     
     setSettings(prev => ({ ...prev, [field]: value, ...modelNameResetFields }));
 
@@ -256,7 +267,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
         modelsList = ollamaModels.map(m => ({ value: m, label: m }));
         placeholder = `Select Ollama ${category} model`;
         fetchFunction = () => fetchOllamaModels(category);
-        noModelsMessage = "No Ollama models found. Pull or refresh.";
+        noModelsMessage = "No Ollama models. Pull or refresh.";
         break;
       case 'gemini':
         valueField = `gemini${capitalizedCategory}ModelName` as keyof AppSettings;
@@ -278,8 +289,11 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
         inputField = `huggingface${capitalizedCategory}ModelName` as keyof AppSettings;
         placeholder = `Enter HuggingFace model ID`;
         break;
+      case 'llamafile':
+        // Llamafile uses a path input, handled separately below this section
+        return <div className="col-span-full"></div>;
       default:
-        return <div className="col-span-2"></div>; // Empty div to maintain grid layout
+        return <div className="col-span-full"></div>; // Empty div to maintain grid layout
     }
 
     const selectorContent = () => {
@@ -310,14 +324,14 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
       }
       if (!requiresInput && valueField && ['ollama', 'gemini', 'openrouter'].includes(apiModelType!)) {
           return (
-            <Select value={(settings[valueField!] as string) || ""} onValueChange={(val) => handleSelectedModelChange(valueField!, val)} disabled={isLoading || (modelsList.length === 0 && !fetchFunction)}>
+            <Select value={(settings[valueField!] as string) || ""} onValueChange={(val) => handleSelectedModelChange(valueField!, val)} disabled={isLoading || (modelsList.length === 0 && !fetchFunction && !error)}>
               <SelectTrigger id={`${valueField!}-${category}`} className="col-span-full bg-input border-primary/50 focus:border-primary">
-                <SelectValue placeholder={modelsList.length > 0 ? placeholder : noModelsMessage} />
+                <SelectValue placeholder={modelsList.length > 0 ? placeholder : (isLoading ? "Loading..." : (error ? "Error" : noModelsMessage))} />
               </SelectTrigger>
               <SelectContent>
-                {modelsList.length === 0 && (
+                {modelsList.length === 0 && !isLoading && (
                   <SelectItem value="no-models-placeholder" disabled className="text-muted-foreground">
-                    {isLoading ? "Loading..." : (error ? "Error loading models" : noModelsMessage)}
+                    {error ? "Error loading models" : noModelsMessage}
                   </SelectItem>
                 )}
                 {modelsList.map(model => (
@@ -338,10 +352,17 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
           {selectorContent()}
         </div>
         {fetchFunction && !requiresInput && (
-           <Button variant="ghost" size="icon" onClick={fetchFunction} className="h-9 w-9 text-primary hover:bg-primary/10" disabled={isLoading || (apiModelType === 'gemini' && !settings.geminiApiKey)}>
-              <RotateCw size={16} />
-              <span className="sr-only">Refresh {apiModelType} models</span>
-            </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={fetchFunction} className="h-9 w-9 text-primary hover:bg-primary/10" disabled={isLoading || (apiModelType === 'gemini' && !settings.geminiApiKey)}>
+                <RotateCw size={16} />
+                <span className="sr-only">Refresh {apiModelType} models</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Refresh {apiModelType} model list</p>
+            </TooltipContent>
+          </Tooltip>
         )}
          {/* Placeholder for alignment if no button */}
         {(!fetchFunction || requiresInput) && <div className="col-span-1"></div>}
@@ -352,9 +373,9 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
   useEffect(() => {
     if (isOpen) {
         const fetchInitialModels = (cat: ModelCategory, apiType?: ApiModelType) => {
-            if (apiType === 'ollama' && ollamaModels.length === 0) fetchOllamaModels(cat);
-            if (apiType === 'gemini' && geminiModels.length === 0 && settings.geminiApiKey) fetchGeminiModels(settings.geminiApiKey, cat);
-            if (apiType === 'openrouter' && openRouterModels.length === 0) fetchOpenRouterModels(cat);
+            if (apiType === 'ollama' && ollamaModels.length === 0 && !loadingStates.ollama[cat] && !errorStates.ollama[cat]) fetchOllamaModels(cat);
+            if (apiType === 'gemini' && geminiModels.length === 0 && settings.geminiApiKey && !loadingStates.gemini[cat] && !errorStates.gemini[cat]) fetchGeminiModels(settings.geminiApiKey, cat);
+            if (apiType === 'openrouter' && openRouterModels.length === 0 && !loadingStates.openrouter[cat] && !errorStates.openrouter[cat]) fetchOpenRouterModels(cat);
         };
         
         fetchInitialModels('main', settings.mainApiModel);
@@ -366,7 +387,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
         }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, settings.mainApiModel, settings.reasoningApiModel, settings.codingApiModel, settings.geminiApiKey, settings.useCustomReasoningModel, settings.useCustomCodingModel, fetchOllamaModels, fetchGeminiModels, fetchOpenRouterModels]);
+  }, [isOpen, settings.mainApiModel, settings.reasoningApiModel, settings.codingApiModel, settings.geminiApiKey, settings.useCustomReasoningModel, settings.useCustomCodingModel]);
 
 
   return (
@@ -378,8 +399,8 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
             AI Model & API Key Settings
           </DialogTitle>
           <DialogDescription>
-            Configure AI models and API keys. API keys are stored in browser state (prototype only) and primarily for Gemini dynamic model use.
-            For OpenRouter & HuggingFace, backend Genkit plugins must be configured with keys from environment variables.
+            Configure AI models and API keys. API keys are passed to the AI flow for context and, in Gemini's case, can be used for dynamic model access.
+            For OpenRouter & HuggingFace, ensure backend Genkit plugins are configured with keys from environment variables.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-6 py-4 max-h-[70vh] overflow-y-auto custom-scrollbar pr-3">
@@ -389,30 +410,27 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
             
             <div className="col-span-4 mt-1 p-3 text-sm text-destructive font-medium bg-destructive/10 border border-destructive/50 rounded-md flex items-start">
               <AlertTriangle size={20} className="mr-2 mt-0.5 shrink-0" />
-              <div><strong>Important Security Warning:</strong> API keys entered here are stored in browser state for this prototype. This is NOT secure for production environments. For actual deployments, API keys must be managed securely on the server-side (e.g., via environment variables loaded by Genkit plugins).
+              <div><strong>Important Security Warning:</strong> API keys entered here are stored in browser state for this prototype and sent to backend flows. This is NOT secure for production environments. For actual deployments, API keys must be managed securely on the server-side (e.g., via environment variables loaded by Genkit plugins).
               </div>
             </div>
 
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="geminiApiKey" className="text-right col-span-1 text-primary/90">Gemini Key</Label>
+              <Label htmlFor="geminiApiKey" className="text-right col-span-1 text-primary/90 self-center">Gemini Key</Label>
               <Input id="geminiApiKey" type="password" value={settings.geminiApiKey || ''}
                 onChange={(e) => {
                   const newApiKey = e.target.value;
                   setSettings(prev => ({ ...prev, geminiApiKey: newApiKey }));
-                  // Re-fetch models if key changes and Gemini is selected for any category
                   if (newApiKey) { 
-                    if (settings.mainApiModel === 'gemini') fetchGeminiModels(newApiKey, 'main');
-                    if (settings.useCustomReasoningModel && settings.reasoningApiModel === 'gemini') fetchGeminiModels(newApiKey, 'reasoning');
-                    if (settings.useCustomCodingModel && settings.codingApiModel === 'gemini') fetchGeminiModels(newApiKey, 'coding');
+                    if (settings.mainApiModel === 'gemini' && !loadingStates.gemini.main) fetchGeminiModels(newApiKey, 'main');
+                    if (settings.useCustomReasoningModel && settings.reasoningApiModel === 'gemini' && !loadingStates.gemini.reasoning) fetchGeminiModels(newApiKey, 'reasoning');
+                    if (settings.useCustomCodingModel && settings.codingApiModel === 'gemini' && !loadingStates.gemini.coding) fetchGeminiModels(newApiKey, 'coding');
                   } else {
                     setGeminiModels([]); 
-                    // Optionally clear Gemini model selections if key is removed
                     const clearGeminiFields: Partial<AppSettings> = {};
-                    if (settings.mainApiModel === 'gemini') clearGeminiFields.geminiMainModelName = '';
-                    if (settings.reasoningApiModel === 'gemini') clearGeminiFields.geminiReasoningModelName = '';
-                    if (settings.codingApiModel === 'gemini') clearGeminiFields.geminiCodingModelName = '';
+                    if (settings.mainApiModel === 'gemini') clearGeminiFields.geminiMainModelName = defaultAppSettings.geminiMainModelName;
+                    if (settings.reasoningApiModel === 'gemini') clearGeminiFields.geminiReasoningModelName = defaultAppSettings.geminiReasoningModelName;
+                    if (settings.codingApiModel === 'gemini') clearGeminiFields.geminiCodingModelName = defaultAppSettings.geminiCodingModelName;
                     setSettings(prev => ({...prev, ...clearGeminiFields}));
-
                   }
                 }}
                 placeholder="Enter Gemini API Key"
@@ -420,7 +438,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="openrouterApiKey" className="text-right col-span-1 text-primary/90">OpenRouter Key</Label>
+              <Label htmlFor="openrouterApiKey" className="text-right col-span-1 text-primary/90 self-center">OpenRouter Key</Label>
               <Input id="openrouterApiKey" type="password" value={settings.openrouterApiKey || ''}
                 onChange={(e) => setSettings(prev => ({ ...prev, openrouterApiKey: e.target.value }))}
                 placeholder="Enter OpenRouter API Key"
@@ -428,14 +446,14 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="huggingfaceApiKey" className="text-right col-span-1 text-primary/90">HuggingFace Key</Label>
+              <Label htmlFor="huggingfaceApiKey" className="text-right col-span-1 text-primary/90 self-center">HuggingFace Key</Label>
               <Input id="huggingfaceApiKey" type="password" value={settings.huggingfaceApiKey || ''}
                 onChange={(e) => setSettings(prev => ({ ...prev, huggingfaceApiKey: e.target.value }))}
                 placeholder="Enter HuggingFace Token"
                 className="col-span-3 bg-input border-primary/50 focus:border-primary" />
             </div>
              <p className="text-xs text-muted-foreground col-span-4">
-                The OpenRouter & HuggingFace keys are passed to the AI for context. Actual use requires backend Genkit plugin configuration with keys from environment variables.
+                For OpenRouter & HuggingFace, actual API usage requires backend Genkit plugins to be configured with API keys from environment variables (e.g., in <code>.env</code>).
               </p>
           </div>
           
@@ -443,7 +461,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
           <div className="space-y-3 p-4 border border-dashed border-primary/50 rounded-md bg-muted/20">
             <h4 className="text-md font-semibold text-primary">Main Generation Model</h4>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="mainApiModel" className="text-right col-span-1 text-primary/90">Type</Label>
+              <Label htmlFor="mainApiModel" className="text-right col-span-1 text-primary/90 self-center">Type</Label>
               <Select value={settings.mainApiModel} onValueChange={(value) => handleModelTypeChange('mainApiModel', value as ApiModelType, 'main')}>
                 <SelectTrigger id="mainApiModel" className="col-span-3 bg-input border-primary/50 focus:border-primary">
                   <SelectValue placeholder="Select main model type" />
@@ -451,8 +469,8 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
                 <SelectContent>{apiModelOptions.map(opt => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-x-2 gap-y-4"> {/* Adjusted gap here */}
-               <Label className="text-right col-span-1 text-primary/90 self-center">Model</Label> {/* self-center for vertical alignment */}
+            <div className="grid grid-cols-4 items-center gap-x-2 gap-y-4"> 
+               <Label className="text-right col-span-1 text-primary/90 self-center">Model</Label>
                {renderModelSelector('main', settings.mainApiModel)}
             </div>
           </div>
@@ -463,11 +481,11 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
                 <h4 className="text-md font-semibold text-primary">Custom Reasoning Model</h4>
                 <Switch id="useCustomReasoningModel" checked={settings.useCustomReasoningModel} 
                         onCheckedChange={(checked) => {
-                            setSettings(prev => ({ ...prev, useCustomReasoningModel: checked }));
-                            if (checked) { // Fetch models if enabling
-                                if (settings.reasoningApiModel === 'ollama') fetchOllamaModels('reasoning');
-                                if (settings.reasoningApiModel === 'gemini' && settings.geminiApiKey) fetchGeminiModels(settings.geminiApiKey, 'reasoning');
-                                if (settings.reasoningApiModel === 'openrouter') fetchOpenRouterModels('reasoning');
+                            setSettings(prev => ({ ...prev, useCustomReasoningModel: checked, reasoningApiModel: checked ? prev.reasoningApiModel : defaultAppSettings.reasoningApiModel }));
+                            if (checked) { 
+                                if (settings.reasoningApiModel === 'ollama' && !loadingStates.ollama.reasoning) fetchOllamaModels('reasoning');
+                                if (settings.reasoningApiModel === 'gemini' && settings.geminiApiKey && !loadingStates.gemini.reasoning) fetchGeminiModels(settings.geminiApiKey, 'reasoning');
+                                if (settings.reasoningApiModel === 'openrouter' && !loadingStates.openrouter.reasoning) fetchOpenRouterModels('reasoning');
                             }
                         }}
                         className="data-[state=checked]:bg-primary" />
@@ -476,7 +494,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
                 settings.useCustomReasoningModel ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
             )}>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="reasoningApiModel" className="text-right col-span-1 text-primary/90">Type</Label>
+                  <Label htmlFor="reasoningApiModel" className="text-right col-span-1 text-primary/90 self-center">Type</Label>
                   <Select value={settings.reasoningApiModel} onValueChange={(value) => handleModelTypeChange('reasoningApiModel', value as ApiModelType, 'reasoning')}>
                     <SelectTrigger id="reasoningApiModel" className="col-span-3 bg-input border-primary/50 focus:border-primary">
                       <SelectValue placeholder="Select reasoning model type" />
@@ -497,11 +515,11 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
                 <h4 className="text-md font-semibold text-primary">Custom Coding Model</h4>
                 <Switch id="useCustomCodingModel" checked={settings.useCustomCodingModel} 
                         onCheckedChange={(checked) => {
-                            setSettings(prev => ({ ...prev, useCustomCodingModel: checked }));
-                             if (checked) { // Fetch models if enabling
-                                if (settings.codingApiModel === 'ollama') fetchOllamaModels('coding');
-                                if (settings.codingApiModel === 'gemini' && settings.geminiApiKey) fetchGeminiModels(settings.geminiApiKey, 'coding');
-                                if (settings.codingApiModel === 'openrouter') fetchOpenRouterModels('coding');
+                            setSettings(prev => ({ ...prev, useCustomCodingModel: checked, codingApiModel: checked ? prev.codingApiModel : defaultAppSettings.codingApiModel }));
+                             if (checked) { 
+                                if (settings.codingApiModel === 'ollama' && !loadingStates.ollama.coding) fetchOllamaModels('coding');
+                                if (settings.codingApiModel === 'gemini' && settings.geminiApiKey && !loadingStates.gemini.coding) fetchGeminiModels(settings.geminiApiKey, 'coding');
+                                if (settings.codingApiModel === 'openrouter' && !loadingStates.openrouter.coding) fetchOpenRouterModels('coding');
                             }
                         }}
                         className="data-[state=checked]:bg-primary" />
@@ -510,7 +528,7 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
                 settings.useCustomCodingModel ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
              )}>
                 <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="codingApiModel" className="text-right col-span-1 text-primary/90">Type</Label>
+                  <Label htmlFor="codingApiModel" className="text-right col-span-1 text-primary/90 self-center">Type</Label>
                   <Select value={settings.codingApiModel} onValueChange={(value) => handleModelTypeChange('codingApiModel', value as ApiModelType, 'coding')}>
                     <SelectTrigger id="codingApiModel" className="col-span-3 bg-input border-primary/50 focus:border-primary">
                       <SelectValue placeholder="Select coding model type" />
@@ -526,40 +544,39 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
           </div>
           
           {isLlamafileSelected && (
-            <div className="col-span-4 space-y-2 mt-2 p-3 border border-dashed border-primary/50 rounded-md bg-muted/20">
-              <Label htmlFor="llamafilePath" className="text-primary/90 flex items-center">
+            <div className="p-4 border border-dashed border-primary/50 rounded-md bg-muted/20">
+              <Label htmlFor="llamafilePath" className="text-primary/90 flex items-center font-semibold mb-2">
                 <AlertTriangle size={16} className="mr-2 text-primary" /> Llamafile Path/URL
               </Label>
               <Input id="llamafilePath" value={settings.llamafilePath || ''}
                 onChange={(e) => setSettings(prev => ({ ...prev, llamafilePath: e.target.value }))}
                 placeholder="e.g., /path/to/model.llamafile or http://localhost:8080"
                 className="bg-input border-primary/50 focus:border-primary" />
-              <p className="text-xs text-muted-foreground">Experimental. Backend must be configured to access this.</p>
+              <p className="text-xs text-muted-foreground mt-1">Experimental. Backend must be configured to access this path/URL.</p>
             </div>
           )}
 
           {(settings.mainApiModel === 'ollama' || (settings.useCustomReasoningModel && settings.reasoningApiModel === 'ollama') || (settings.useCustomCodingModel && settings.codingApiModel === 'ollama')) && (
-             <div className="col-span-4 mt-2 p-3 border border-dashed border-primary/50 rounded-md bg-muted/20">
-              <p className="text-primary/90 flex items-center mb-1"><AlertTriangle size={16} className="mr-2 text-primary" /> Ollama Note</p>
+             <div className="p-4 border border-dashed border-primary/50 rounded-md bg-muted/20">
+              <p className="text-primary/90 flex items-center font-semibold mb-1"><AlertTriangle size={16} className="mr-2 text-primary" /> Ollama Note</p>
               <p className="text-xs text-muted-foreground">
-                Ensure Ollama runs at <code>http://localhost:11434</code> and models are pulled. Check CORS if issues persist.
+                Ensure Ollama server (usually at <code>http://localhost:11434</code>) is running, models are pulled (e.g., <code>ollama pull llama3</code>), and CORS is configured if you encounter connection issues from the browser (less relevant if Genkit plugin handles calls server-side).
               </p>
              </div>
           )}
            {(settings.mainApiModel === 'huggingface' || (settings.useCustomReasoningModel && settings.reasoningApiModel === 'huggingface') || (settings.useCustomCodingModel && settings.codingApiModel === 'huggingface')) && (
-             <div className="col-span-4 mt-2 p-3 border border-dashed border-primary/50 rounded-md bg-muted/20">
-              <p className="text-primary/90 flex items-center mb-1"><AlertTriangle size={16} className="mr-2 text-primary" /> HuggingFace Note</p>
+             <div className="p-4 border border-dashed border-primary/50 rounded-md bg-muted/20">
+              <p className="text-primary/90 flex items-center font-semibold mb-1"><AlertTriangle size={16} className="mr-2 text-primary" /> HuggingFace Note</p>
               <p className="text-xs text-muted-foreground">
-                Enter the specific HuggingFace model ID (e.g., <code>mistralai/Mistral-7B-Instruct-v0.1</code>). An API token may be required for certain models.
-                Ensure backend Genkit plugin is configured with HF_API_TOKEN from your <code>.env</code> file.
+                Enter the specific HuggingFace model ID (e.g., <code>mistralai/Mistral-7B-Instruct-v0.1</code>). For API access, ensure your backend Genkit plugin for HuggingFace is configured with your <code>HF_API_TOKEN</code> (from your <code>.env</code> file).
               </p>
              </div>
             )}
              {(settings.mainApiModel === 'openrouter' || (settings.useCustomReasoningModel && settings.reasoningApiModel === 'openrouter') || (settings.useCustomCodingModel && settings.codingApiModel === 'openrouter')) && (
-             <div className="col-span-4 mt-2 p-3 border border-dashed border-primary/50 rounded-md bg-muted/20">
-              <p className="text-primary/90 flex items-center mb-1"><AlertTriangle size={16} className="mr-2 text-primary" /> OpenRouter Note</p>
+             <div className="p-4 border border-dashed border-primary/50 rounded-md bg-muted/20">
+              <p className="text-primary/90 flex items-center font-semibold mb-1"><AlertTriangle size={16} className="mr-2 text-primary" /> OpenRouter Note</p>
               <p className="text-xs text-muted-foreground">
-                Ensure backend Genkit plugin for OpenRouter is configured with OPENROUTER_API_KEY from your <code>.env</code> file.
+                 For API access, ensure your backend Genkit plugin for OpenRouter is configured with your <code>OPENROUTER_API_KEY</code> (from your <code>.env</code> file).
               </p>
              </div>
             )}
@@ -572,3 +589,4 @@ export function SettingsDialog({ isOpen, onOpenChange, currentSettings, onSave }
     </Dialog>
   );
 }
+

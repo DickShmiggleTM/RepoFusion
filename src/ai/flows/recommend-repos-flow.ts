@@ -28,6 +28,7 @@ const RecommendReposInputSchema = z.object({
   openrouterApiKey: z.string().optional(),
   huggingfaceApiKey: z.string().optional(),
 
+  // These are for contextual awareness in the prompt, not direct use in this simple flow
   useCustomReasoningModel: z.boolean().optional(),
   reasoningApiModel: z.enum(['gemini', 'openrouter', 'huggingface', 'llamafile', 'ollama']).optional(),
   ollamaReasoningModelName: z.string().optional(),
@@ -45,7 +46,7 @@ export type RecommendReposInput = z.infer<typeof RecommendReposInputSchema>;
 
 const RecommendedRepoSchema = z.object({
   name: z.string().describe('The name of the GitHub repository (e.g., "Next.js").'),
-  url: z.string().describe('The full HTTPS URL of the GitHub repository (e.g., "https://github.com/vercel/next.js").'),
+  url: z.string().describe('The full HTTPS URL of the GitHub repository (e.g., "https://github.com/vercel/next.js").'), // .url() removed due to API compatibility
   reason: z.string().describe('A brief (1-2 sentence) explanation of why this repository is recommended based on the request.'),
 });
 
@@ -62,7 +63,7 @@ const defineRecommendReposPrompt = (aiInstance: typeof globalAi) => aiInstance.d
 
 Current Model Configuration (for your context, this is the main model you are currently using):
 - Main Model Type: {{{mainApiModel}}}
-{{#if ollamaMainModelName}}- Ollama Model: {{{ollamaMainModelName}}} (Base name: {{ollamaMainModelName}}){{/if}}
+{{#if ollamaMainModelName}}- Ollama Model: {{{ollamaMainModelName}}} (Base name: {{ollamaMainModelName.split(':')[0]}}){{/if}}
 {{#if geminiMainModelName}}- Gemini Model: {{{geminiMainModelName}}}{{/if}}
 {{#if openrouterMainModelName}}- OpenRouter Model: {{{openrouterMainModelName}}}{{/if}}
 {{#if huggingfaceMainModelName}}- HuggingFace Model: {{{huggingfaceMainModelName}}}{{/if}}
@@ -116,21 +117,22 @@ const recommendReposFlow = globalAi.defineFlow(
     } else if (input.mainApiModel === 'gemini' && input.geminiMainModelName) {
       modelToUse = `googleai/${input.geminiMainModelName}`;
     } else if (input.mainApiModel === 'ollama' && input.ollamaMainModelName) {
-      baseModelName = input.ollamaMainModelName.split(':')[0];
+      baseModelName = input.ollamaMainModelName.split(':')[0]; // Strip tag
       modelToUse = `ollama/${baseModelName}`;
-      console.warn(`RecommendRepos: Ollama model selected: ${input.ollamaMainModelName}. Using base name for Genkit: ${baseModelName}. Ensure Genkit is configured with an Ollama plugin and the model is available locally.`);
+      console.warn(`RecommendRepos: Ollama model selected: ${input.ollamaMainModelName}. Using base name for Genkit: ${baseModelName}. Ensure Genkit is configured with an Ollama plugin (see src/ai/genkit.ts) and the model is available locally.`);
     } else if (input.mainApiModel === 'openrouter' && input.openrouterMainModelName) {
       modelToUse = `openrouter/${input.openrouterMainModelName}`;
-      console.warn("RecommendRepos: OpenRouter model selected. Ensure Genkit is configured with an OpenRouter plugin and API key for this to work.");
+      console.warn("RecommendRepos: OpenRouter model selected. Ensure Genkit is configured with an OpenRouter plugin and API key (see src/ai/genkit.ts) for this to work.");
     } else if (input.mainApiModel === 'huggingface' && input.huggingfaceMainModelName) {
       modelToUse = `huggingface/${input.huggingfaceMainModelName}`;
-      console.warn("RecommendRepos: HuggingFace model selected. Ensure Genkit is configured with a HuggingFace plugin and API key for this to work.");
+      console.warn("RecommendRepos: HuggingFace model selected. Ensure Genkit is configured with a HuggingFace plugin and API key (see src/ai/genkit.ts) for this to work.");
     } else if (input.mainApiModel === 'llamafile') {
-      console.warn("RecommendRepos: Llamafile selected as main model. Using default model for generation. Ensure Llamafile is running and accessible if Genkit is configured for it.");
+      console.warn("RecommendRepos: Llamafile selected as main model. Using default model for generation. Ensure Llamafile is running and accessible if Genkit is configured for it. Llamafile path available in prompt context.");
     }
     
     const {output} = await configuredPrompt(input, modelToUse ? { model: modelToUse } : undefined);
     
+    // Robust output validation
     if (!output || !output.recommendations) {
       throw new Error('AI did not return a valid recommendations structure. Please try again or check model output format instructions.');
     }

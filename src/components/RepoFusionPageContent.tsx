@@ -70,7 +70,7 @@ export default function RepoFusionPageContent() {
 
       <footer className="text-center text-xs text-muted-foreground/70 py-6 mt-auto border-t border-border">
         <p>&copy; {new Date().getFullYear()} RepoFusion. Powered by AI and Retro Vibes.</p>
-         <p>Press <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded-sm bg-muted text-foreground">Ctrl/Cmd</kbd> + <kbd className="px-1.5 py-0.5 border border-foreground/50 rounded-sm bg-muted text-foreground">B</kbd> for potential sidebar (if applicable in future).</p>
+         <p>Press <kbd className="kbd-key">Ctrl/Cmd</kbd> + <kbd className="kbd-key">B</kbd> for potential sidebar (if applicable in future).</p>
       </footer>
 
       <SettingsDialog
@@ -82,3 +82,4 @@ export default function RepoFusionPageContent() {
     </div>
   );
 }
+

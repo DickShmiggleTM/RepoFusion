@@ -2,7 +2,7 @@
 "use client";
 
 import type { IntelligentMergeOutput } from '@/ai/flows/intelligent-merge';
-import { Code, FileText, PackageSearch, DownloadCloud, FileCode, ChevronRight } from 'lucide-react';
+import { Code, FileText, PackageSearch, DownloadCloud, FileCode, ChevronRight, Copy } from 'lucide-react';
 import { Window } from '@/components/Window';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +10,7 @@ import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver'; 
-import { useState, useEffect } from 'react'; // Added useEffect
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 interface MergeOutputDisplayProps {
@@ -34,12 +34,12 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
     } else if (hasSummary) {
       setSelectedFile(null);
       if (activeTab !== "summary") setActiveTab("summary");
-    } else { // Neither files nor summary
+    } else { 
       setSelectedFile(null);
-      // Default to summary tab visually, even if disabled, or a specific "empty" state if preferred
       setActiveTab("summary"); 
     }
-  }, [output, hasFiles, hasSummary, activeTab]); // activeTab added to dependencies to re-evaluate if user changes tab
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [output, hasFiles, hasSummary]); 
 
 
   if (!hasFiles && !hasSummary) {
@@ -101,12 +101,12 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
     <Window title="AI Merge Output" icon={<Code size={18} />} className="min-h-[400px] flex flex-col">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow flex flex-col">
         <TabsList className="grid w-full grid-cols-2 bg-muted/50">
-          <TabsTrigger value="code" disabled={!hasFiles} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Generated Files</TabsTrigger>
-          <TabsTrigger value="summary" disabled={!hasSummary} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Summary</TabsTrigger>
+          <TabsTrigger value="code" disabled={!hasFiles} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">Generated Files</TabsTrigger>
+          <TabsTrigger value="summary" disabled={!hasSummary} className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">Summary</TabsTrigger>
         </TabsList>
 
         <TabsContent value="code" className={cn("flex-grow mt-0 overflow-hidden relative data-[state=active]:animate-fade-in data-[state=inactive]:hidden", !hasFiles && "hidden")}>
-          {hasFiles && output?.files && ( // Ensure output.files is accessed only if hasFiles is true
+          {hasFiles && output?.files && (
             <div className="flex h-full">
               <ScrollArea className="w-1/3 border-r border-border p-1 bg-muted/30 custom-scrollbar">
                 <div className="p-1 space-y-1">
@@ -116,14 +116,14 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
                       variant="ghost"
                       onClick={() => setSelectedFile(file)}
                       className={cn(
-                        "w-full justify-start text-xs h-auto py-1.5 px-2 text-left transition-colors duration-150",
+                        "w-full justify-start text-xs h-auto py-1.5 px-2 text-left transition-colors duration-150 group",
                         selectedFile?.path === file.path ? "bg-primary/30 text-primary font-semibold ring-1 ring-primary" : "hover:bg-primary/10 hover:text-primary"
                       )}
                       title={file.path}
                     >
                       <FileCode size={14} className="mr-2 shrink-0" />
                       <span className="truncate">{file.path.split('/').pop()}</span>
-                      <ChevronRight size={14} className="ml-auto shrink-0 opacity-50 group-hover:opacity-100" />
+                      <ChevronRight size={14} className="ml-auto shrink-0 opacity-50 group-hover:opacity-100 transition-opacity" />
                     </Button>
                   ))}
                 </div>
@@ -131,10 +131,13 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
               <div className="w-2/3 flex flex-col relative">
                 {selectedFile ? (
                   <>
-                    <div className="p-2 border-b border-border text-xs text-muted-foreground bg-muted/30 truncate">
-                      {selectedFile.path}
+                    <div className="p-2 border-b border-border text-xs text-muted-foreground bg-muted/30 truncate flex justify-between items-center">
+                      <span>{selectedFile.path}</span>
+                      <Button onClick={handleCopyFileContent} size="icon" variant="ghost" className="h-6 w-6 text-primary hover:bg-primary/10 hover:text-primary">
+                        <Copy size={12} />
+                         <span className="sr-only">Copy Code</span>
+                      </Button>
                     </div>
-                    <Button onClick={handleCopyFileContent} size="sm" variant="outline" className="absolute top-1 right-1 z-10 border-primary text-primary hover:bg-primary/10 h-7 px-2 text-xs">Copy Code</Button>
                     <ScrollArea className="flex-grow p-1 bg-input rounded-sm custom-scrollbar">
                       <pre className="text-xs whitespace-pre-wrap p-2">{selectedFile.content}</pre>
                     </ScrollArea>
@@ -151,14 +154,19 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
         </TabsContent>
 
         <TabsContent value="summary" className={cn("flex-grow mt-0 overflow-hidden relative data-[state=active]:animate-fade-in data-[state=inactive]:hidden", !hasSummary && "hidden")}>
-          {hasSummary && output?.summary && ( // Ensure output.summary is accessed only if hasSummary is true
+          {hasSummary && output?.summary && ( 
             <>
-              <Button onClick={handleCopySummary} size="sm" variant="outline" className="absolute top-2 right-2 z-10 border-primary text-primary hover:bg-primary/10">Copy Summary</Button>
+              <div className="p-2 border-b border-border text-xs text-muted-foreground bg-muted/30 flex justify-between items-center">
+                <h3 className="text-sm font-semibold text-primary flex items-center">
+                    <FileText size={16} className="mr-2" /> Merge Summary & Plan
+                </h3>
+                <Button onClick={handleCopySummary} size="icon" variant="ghost" className="h-6 w-6 text-primary hover:bg-primary/10 hover:text-primary">
+                    <Copy size={12} />
+                    <span className="sr-only">Copy Summary</span>
+                </Button>
+              </div>
               <ScrollArea className="h-full w-full p-1 bg-input rounded-sm custom-scrollbar">
                 <div className="p-4">
-                  <h3 className="text-lg font-semibold text-primary mb-2 flex items-center">
-                    <FileText size={20} className="mr-2" /> Merge Summary & Plan
-                  </h3>
                   <p className="text-sm whitespace-pre-wrap">{output.summary}</p>
                 </div>
               </ScrollArea>
@@ -176,3 +184,4 @@ export function MergeOutputDisplay({ output }: MergeOutputDisplayProps) {
     </Window>
   );
 }
+
